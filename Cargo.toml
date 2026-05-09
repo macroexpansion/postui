@@ -4,3 +4,42 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chrono = { version = "0.4.44", features = ["serde"] }
+clap = { version = "4.6.1", features = ["derive"] }
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+directories = "6.0.0"
+futures = "0.3.32"
+postgres-types = "0.2.13"
+ratatui = "0.30.0"
+rust_decimal = "1.42.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+tempfile = "3.27.0"
+thiserror = "2.0.18"
+tokio = { version = "1.52.2", features = ["rt", "macros", "sync", "time", "signal"] }
+tokio-postgres = { version = "0.7.17", features = ["with-uuid-1", "with-chrono-0_4", "with-serde_json-1"] }
+tokio-util = { version = "0.7.18", features = ["rt"] }
+toml = "1.1.2"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+tui-textarea = { package = "tui-textarea-2", version = "0.7", features = ["crossterm", "search"] }
+url = "2.5.8"
+uuid = { version = "1.23.1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["postgres"] }
+tokio = { version = "1.52.2", features = ["rt", "macros"] }
+
+[lib]
+name = "postui"
+path = "src/lib.rs"
+
+[[bin]]
+name = "postui"
+path = "src/main.rs"
+
+[lints.rust]
+unused_imports = "warn"
+dead_code = "warn"
