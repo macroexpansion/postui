@@ -74,9 +74,6 @@ impl App {
         if let Some(top) = self.views.last_mut() {
             top.on_enter(&mut ctx);
         }
-        if self.views.is_empty() {
-            self.should_quit = true;
-        }
     }
 
     pub fn set_connection(&mut self, conn: PgConn) {
@@ -436,6 +433,9 @@ impl App {
                 other => other,
             };
             self.handle_outcome(outcome);
+            if self.views.is_empty() && key.code == KeyCode::Esc {
+                self.should_quit = true;
+            }
         } else if key.code == KeyCode::Esc {
             self.should_quit = true;
         }
@@ -543,6 +543,9 @@ impl App {
                     match maybe_term {
                         Some(Ok(Event::Key(k))) if k.kind == crossterm::event::KeyEventKind::Press => {
                             self.handle_key(k);
+                            while let Ok(ev) = self.event_rx.try_recv() {
+                                self.handle_event(ev);
+                            }
                         }
                         Some(Ok(_)) => {}
                         Some(Err(e)) => tracing::error!(?e, "crossterm event error"),
