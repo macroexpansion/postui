@@ -1,6 +1,6 @@
 //! :help — modal listing keybindings and palette commands.
 
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::Rect,
@@ -14,8 +14,6 @@ use crate::{
 };
 
 const TEXT: &str = "
-  postui — quick help
-
   Universal:
     :              open palette       /              filter visible rows
     Esc            pop view           ^Q             quit
@@ -48,37 +46,77 @@ const TEXT: &str = "
     d              delete selected row
     Enter          submit edit (in edit mode)  Esc cancel
 
-  Press any key to dismiss.
+  Press Esc key to dismiss.
 ";
-
-fn render_text(f: &mut Frame, area: Rect, theme: &Theme) {
-    let rect = ui::centered_rect(70, 80, area);
-    f.render_widget(Clear, rect);
-    let p = Paragraph::new(TEXT)
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
-        .wrap(Wrap { trim: false });
-    f.render_widget(p, rect);
-}
 
 // --- Modal (new) ---
 
-pub struct HelpModal;
-
-impl HelpModal {
-    pub fn new() -> Self { Self }
+pub struct HelpModal {
+    scroll: u16,
+    viewport: u16,
 }
 
-impl Default for HelpModal { fn default() -> Self { Self::new() } }
+impl HelpModal {
+    pub fn new() -> Self {
+        Self {
+            scroll: 0,
+            viewport: 0,
+        }
+    }
+
+    fn max_scroll(&self) -> u16 {
+        let lines = TEXT.lines().count() as u16;
+        lines.saturating_sub(self.viewport)
+    }
+
+    fn page(&self) -> u16 {
+        self.viewport.saturating_sub(1).max(1)
+    }
+}
+
+impl Default for HelpModal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Modal for HelpModal {
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
-        render_text(f, area, theme);
+        let rect = ui::centered_rect(70, 80, area);
+        f.render_widget(Clear, rect);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" quick help ")
+            .border_style(Style::default().fg(theme.border));
+        let inner = block.inner(rect);
+        self.viewport = inner.height;
+        let max = self.max_scroll();
+        if self.scroll > max {
+            self.scroll = max;
+        }
+        let p = Paragraph::new(TEXT)
+            .block(block)
+            .wrap(Wrap { trim: false })
+            .scroll((self.scroll, 0));
+        f.render_widget(p, rect);
     }
 
-    fn handle_key(&mut self, _key: KeyEvent, _ctx: &mut Ctx) -> ModalOutcome {
-        ModalOutcome::Close
+    fn handle_key(&mut self, key: KeyEvent, _ctx: &mut Ctx) -> ModalOutcome {
+        match key.code {
+            KeyCode::Esc => ModalOutcome::Close,
+            KeyCode::Char('j') => {
+                self.scroll = (self.scroll + self.page()).min(self.max_scroll());
+                ModalOutcome::Consumed
+            }
+            KeyCode::Char('k') => {
+                self.scroll = self.scroll.saturating_sub(self.page());
+                ModalOutcome::Consumed
+            }
+            _ => ModalOutcome::Consumed,
+        }
     }
 
-    fn hints(&self) -> &str { "press any key to dismiss" }
+    fn hints(&self) -> &str {
+        "j/k page down/up • Esc close"
+    }
 }
-
