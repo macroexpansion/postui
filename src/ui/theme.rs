@@ -111,7 +111,32 @@ pub static SOLARIZED_DARK: Theme = Theme {
     row_stripe: Color::Rgb(7, 54, 66),
 };
 
-pub static ALL: &[&'static Theme] = &[&DEFAULT, &DRACULA, &GRUVBOX_DARK, &NORD, &SOLARIZED_DARK];
+pub static EVERFOREST: Theme = Theme {
+    name: "everforest",
+    bg: Color::Rgb(51, 60, 67),
+    fg: Color::Rgb(211, 198, 170),
+    border: Color::Rgb(133, 146, 137),
+    header: Color::Rgb(167, 192, 128),
+    footer: Color::Rgb(133, 146, 137),
+    selection_bg: Color::Rgb(167, 192, 128),
+    selection_fg: Color::Rgb(30, 35, 38),
+    accent: Color::Rgb(230, 152, 117),
+    muted: Color::Rgb(133, 146, 137),
+    error: Color::Rgb(230, 126, 128),
+    warn: Color::Rgb(219, 188, 127),
+    success: Color::Rgb(167, 192, 128),
+    table_header: Color::Rgb(131, 192, 146),
+    row_stripe: Color::Rgb(58, 70, 76),
+};
+
+pub static ALL: &[&'static Theme] = &[
+    &DEFAULT,
+    &DRACULA,
+    &GRUVBOX_DARK,
+    &NORD,
+    &SOLARIZED_DARK,
+    &EVERFOREST,
+];
 
 pub fn by_name(name: &str) -> Option<&'static Theme> {
     ALL.iter().copied().find(|t| t.name == name)
