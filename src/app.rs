@@ -154,8 +154,8 @@ impl App {
                 return;
             }
             "themes" => {
-                use crate::views::themes::ThemesView;
-                self.push(Box::new(ThemesView::new(self.theme)));
+                use crate::views::themes::ThemesModal;
+                self.modal = Some(Box::new(ThemesModal::new(self.theme)));
                 return;
             }
             "help" => {

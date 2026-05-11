@@ -51,7 +51,7 @@ pub enum AppEvent {
     PreviewTheme(&'static crate::ui::theme::Theme),
     /// Persist the current theme to the config file.
     PersistTheme(String),
-    /// Restore a previously saved theme (used by ThemesView on Esc).
+    /// Restore a previously saved theme (used by ThemesModal on Esc).
     RestoreTheme(&'static crate::ui::theme::Theme),
 }
 
