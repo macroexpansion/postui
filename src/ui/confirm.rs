@@ -17,7 +17,7 @@ pub struct Confirm {
 
 impl Confirm {
     pub fn render(&self, f: &mut Frame, area: Rect, theme: &Theme) {
-        let modal = centered_rect(70, 50, area);
+        let modal = crate::ui::centered_rect(70, 50, area);
         f.render_widget(Clear, modal);
 
         let chunks = Layout::default()
@@ -40,24 +40,4 @@ impl Confirm {
             .style(Style::default().fg(theme.muted));
         f.render_widget(foot, chunks[2]);
     }
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }
