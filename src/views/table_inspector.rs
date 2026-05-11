@@ -54,9 +54,10 @@ pub struct TableInspectorView {
 
 impl TableInspectorView {
     pub fn new(conn: PgConn, schema: String, name: String) -> Self {
+        let id = ViewId::next();
         Self {
-            id: ViewId::next(),
-            rows: RowsView::new(conn.clone(), schema.clone(), name.clone()),
+            id,
+            rows: RowsView::new(id, conn.clone(), schema.clone(), name.clone()),
             conn,
             schema,
             name,

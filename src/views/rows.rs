@@ -12,6 +12,11 @@ use crate::{
 
 pub struct RowsView {
     id: ViewId,
+    /// View id to send `AppEvent::ViewData` under. When `RowsView` is embedded
+    /// inside another view (e.g. `TableInspectorView`), this must be the
+    /// *parent's* id, since the App dispatcher routes events to the top of the
+    /// view stack — not to embedded children.
+    event_view_id: ViewId,
     table: DataTable,
     page: Option<Page>,
     error: Option<String>,
@@ -22,9 +27,10 @@ pub struct RowsView {
 }
 
 impl RowsView {
-    pub fn new(conn: PgConn, schema: String, name: String) -> Self {
+    pub fn new(event_view_id: ViewId, conn: PgConn, schema: String, name: String) -> Self {
         Self {
             id: ViewId::next(),
+            event_view_id,
             table: DataTable::new(vec![]),
             page: None,
             error: None,
@@ -36,7 +42,7 @@ impl RowsView {
     }
 
     fn refetch(&mut self, ctx: &mut Ctx) {
-        let view_id = self.id;
+        let view_id = self.event_view_id;
         let conn = self.conn.clone();
         let schema = self.schema.clone();
         let name = self.name.clone();
