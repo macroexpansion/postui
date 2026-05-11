@@ -12,7 +12,7 @@ use crate::{
     error::Result,
     term::Tui,
     ui::{self, footer, header, palette::{self, Cmd, Palette}, theme::{self, Theme}},
-    views::{AppEvent, Ctx, Outcome, View},
+    views::{AppEvent, Ctx, Modal, ModalOutcome, Outcome, View},
 };
 
 const EVENT_CHANNEL_BUFFER: usize = 64;
@@ -33,6 +33,9 @@ pub struct App {
     /// When `Some`, the user is typing into the live filter buffer; the buffer
     /// content is mirrored to the active view via `set_filter` on every change.
     pub filter_input: Option<String>,
+    /// Active modal overlay (themes picker, help, etc.). At most one open at
+    /// a time. Routed before the view stack in `handle_key`.
+    pub modal: Option<Box<dyn Modal>>,
 }
 
 impl App {
@@ -52,6 +55,7 @@ impl App {
             config,
             config_path,
             filter_input: None,
+            modal: None,
         }
     }
 
@@ -375,6 +379,16 @@ impl App {
             return;
         }
 
+        // modal owns the keys until closed; Ctrl-Q above still wins.
+        if let Some(modal) = self.modal.as_mut() {
+            let mut ctx = Ctx::new(self.event_tx.clone());
+            let outcome = modal.handle_key(key, &mut ctx);
+            if matches!(outcome, ModalOutcome::Close) {
+                self.modal = None;
+            }
+            return;
+        }
+
         // open palette
         if key.code == KeyCode::Char(':') {
             self.palette.open();
@@ -518,9 +532,16 @@ impl App {
             ui::render_main_placeholder(f, main);
         }
 
-        let hints = match self.views.last() {
-            Some(_) => "[:] palette  [/] filter  [esc] back  [^Q] quit  [?] help",
-            None => "[:] palette  [^Q] quit",
+        if let Some(modal) = self.modal.as_mut() {
+            modal.render(f, main, self.theme);
+        }
+
+        let hints: &str = if let Some(m) = self.modal.as_ref() {
+            m.hints()
+        } else if self.views.last().is_some() {
+            "[:] palette  [/] filter  [esc] back  [^Q] quit  [?] help"
+        } else {
+            "[:] palette  [^Q] quit"
         };
         let toast_or_filter: String;
         let footer_text: Option<&str> = if let Some(buf) = &self.filter_input {
@@ -563,6 +584,9 @@ impl App {
                     let mut ctx = Ctx::new(self.event_tx.clone());
                     if let Some(top) = self.views.last_mut() {
                         top.on_tick(&mut ctx);
+                    }
+                    if let Some(modal) = self.modal.as_mut() {
+                        modal.on_tick(&mut ctx);
                     }
                 }
             }
