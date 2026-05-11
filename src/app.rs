@@ -432,12 +432,16 @@ impl App {
                 Outcome::Pass if key.code == KeyCode::Char('a') => self.handle_insert_request(),
                 other => other,
             };
+            // Esc never quits the app: the bottom view is sticky. If Esc would
+            // pop the last remaining view, treat it as a no-op. Use ^Q or
+            // `:quit` to exit.
+            let outcome = match outcome {
+                Outcome::Pop if key.code == KeyCode::Esc && self.views.len() <= 1 => {
+                    Outcome::Consumed
+                }
+                other => other,
+            };
             self.handle_outcome(outcome);
-            if self.views.is_empty() && key.code == KeyCode::Esc {
-                self.should_quit = true;
-            }
-        } else if key.code == KeyCode::Esc {
-            self.should_quit = true;
         }
     }
 
