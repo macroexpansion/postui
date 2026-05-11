@@ -5,12 +5,12 @@ use ratatui::{
     Frame,
     layout::Rect,
     style::Style,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
 use crate::{
-    ui::theme::Theme,
-    views::{Ctx, Outcome, View, ViewId},
+    ui::{self, theme::Theme},
+    views::{Ctx, Modal, ModalOutcome, Outcome, View, ViewId},
 };
 
 const TEXT: &str = "
@@ -51,6 +51,39 @@ const TEXT: &str = "
   Press any key to dismiss.
 ";
 
+fn render_text(f: &mut Frame, area: Rect, theme: &Theme) {
+    let rect = ui::centered_rect(70, 80, area);
+    f.render_widget(Clear, rect);
+    let p = Paragraph::new(TEXT)
+        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
+        .wrap(Wrap { trim: false });
+    f.render_widget(p, rect);
+}
+
+// --- Modal (new) ---
+
+pub struct HelpModal;
+
+impl HelpModal {
+    pub fn new() -> Self { Self }
+}
+
+impl Default for HelpModal { fn default() -> Self { Self::new() } }
+
+impl Modal for HelpModal {
+    fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
+        render_text(f, area, theme);
+    }
+
+    fn handle_key(&mut self, _key: KeyEvent, _ctx: &mut Ctx) -> ModalOutcome {
+        ModalOutcome::Close
+    }
+
+    fn hints(&self) -> &str { "press any key to dismiss" }
+}
+
+// --- View (deprecated; deleted in a follow-up task) ---
+
 pub struct HelpView { id: ViewId }
 
 impl HelpView {
@@ -64,10 +97,7 @@ impl View for HelpView {
     fn title(&self) -> &str { "help" }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
-        let p = Paragraph::new(TEXT)
-            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
-            .wrap(Wrap { trim: false });
-        f.render_widget(p, area);
+        render_text(f, area, theme);
     }
 
     fn handle_key(&mut self, _key: KeyEvent, _ctx: &mut Ctx) -> Outcome {
