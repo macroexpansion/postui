@@ -159,7 +159,7 @@ impl App {
                 return;
             }
             "help" => {
-                self.push(Box::new(crate::views::help::HelpView::new()));
+                self.modal = Some(Box::new(crate::views::help::HelpModal::new()));
                 return;
             }
             _ => {}
@@ -431,7 +431,7 @@ impl App {
 
         // open help modal
         if key.code == KeyCode::Char('?') {
-            self.push(Box::new(crate::views::help::HelpView::new()));
+            self.modal = Some(Box::new(crate::views::help::HelpModal::new()));
             return;
         }
 

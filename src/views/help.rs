@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::{
     ui::{self, theme::Theme},
-    views::{Ctx, Modal, ModalOutcome, Outcome, View, ViewId},
+    views::{Ctx, Modal, ModalOutcome},
 };
 
 const TEXT: &str = "
@@ -82,25 +82,3 @@ impl Modal for HelpModal {
     fn hints(&self) -> &str { "press any key to dismiss" }
 }
 
-// --- View (deprecated; deleted in a follow-up task) ---
-
-pub struct HelpView { id: ViewId }
-
-impl HelpView {
-    pub fn new() -> Self { Self { id: ViewId::next() } }
-}
-
-impl Default for HelpView { fn default() -> Self { Self::new() } }
-
-impl View for HelpView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "help" }
-
-    fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
-        render_text(f, area, theme);
-    }
-
-    fn handle_key(&mut self, _key: KeyEvent, _ctx: &mut Ctx) -> Outcome {
-        Outcome::Pop
-    }
-}
