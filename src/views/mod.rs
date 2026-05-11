@@ -136,3 +136,23 @@ pub trait View: Send {
     /// Implementations should return `Some(self)`.
     fn as_any(&self) -> Option<&dyn std::any::Any> { None }
 }
+
+/// A transient overlay rendered on top of the active view. Unlike `View`,
+/// modals do not participate in navigation: they have no id, no title, and
+/// cannot push/pop. They live in `App::modal: Option<Box<dyn Modal>>` and
+/// are routed before the view stack.
+pub trait Modal: Send {
+    fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme);
+    fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> ModalOutcome;
+    fn apply(&mut self, _payload: ViewPayload) {}
+    fn on_tick(&mut self, _ctx: &mut Ctx) {}
+    /// Footer hint string shown while this modal is open.
+    fn hints(&self) -> &str { "" }
+}
+
+pub enum ModalOutcome {
+    /// Key handled, keep the modal open.
+    Consumed,
+    /// Close the modal.
+    Close,
+}
