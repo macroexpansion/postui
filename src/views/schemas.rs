@@ -4,7 +4,10 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{Frame, layout::Rect};
 
 use crate::{
-    db::{PgConn, catalog::{SchemaInfo, list_schemas}},
+    db::{
+        PgConn,
+        catalog::{SchemaInfo, list_schemas},
+    },
     keys::vim_motion,
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
@@ -22,7 +25,13 @@ impl SchemasView {
     pub fn new(conn: PgConn) -> Self {
         let mut table = DataTable::new(vec!["name", "owner"]);
         table.set_rows(vec![]);
-        Self { id: ViewId::next(), table, rows: vec![], error: None, conn }
+        Self {
+            id: ViewId::next(),
+            table,
+            rows: vec![],
+            error: None,
+            conn,
+        }
     }
 
     pub fn selected(&self) -> Option<&SchemaInfo> {
@@ -31,8 +40,12 @@ impl SchemasView {
 }
 
 impl View for SchemasView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "schemas" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "schemas"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         self.table.render(f, area, theme);
@@ -55,10 +68,12 @@ impl View for SchemasView {
         let tx = ctx.event_tx.clone();
         tokio::spawn(async move {
             let result = list_schemas(&conn).await;
-            let _ = tx.send(AppEvent::ViewData {
-                view_id,
-                payload: ViewPayload::Schemas(result),
-            }).await;
+            let _ = tx
+                .send(AppEvent::ViewData {
+                    view_id,
+                    payload: ViewPayload::Schemas(result),
+                })
+                .await;
         });
     }
 
@@ -67,10 +82,11 @@ impl View for SchemasView {
             match res {
                 Ok(rows) => {
                     self.rows = rows;
-                    let display: Vec<Vec<String>> = self.rows.iter().map(|s| vec![
-                        s.name.clone(),
-                        s.owner.clone(),
-                    ]).collect();
+                    let display: Vec<Vec<String>> = self
+                        .rows
+                        .iter()
+                        .map(|s| vec![s.name.clone(), s.owner.clone()])
+                        .collect();
                     self.table.set_rows(display);
                     self.error = None;
                 }
@@ -79,8 +95,14 @@ impl View for SchemasView {
         }
     }
 
-    fn set_filter(&mut self, filter: &str) { self.table.set_filter(filter); }
-    fn supports_filter(&self) -> bool { true }
+    fn set_filter(&mut self, filter: &str) {
+        self.table.set_filter(filter);
+    }
+    fn supports_filter(&self) -> bool {
+        true
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

@@ -11,7 +11,11 @@ use crate::{
     db::PgConn,
     error::Result,
     term::Tui,
-    ui::{self, footer, header, palette::{self, Cmd, Palette}, theme::{self, Theme}},
+    ui::{
+        self, footer, header,
+        palette::{self, Cmd, Palette},
+        theme::{self, Theme},
+    },
     views::{AppEvent, Ctx, Modal, ModalOutcome, Outcome, View},
 };
 
@@ -68,7 +72,9 @@ impl App {
         self.views.push(v);
     }
 
-    pub fn push_view(&mut self, v: Box<dyn View>) { self.push(v); }
+    pub fn push_view(&mut self, v: Box<dyn View>) {
+        self.push(v);
+    }
 
     pub fn pop(&mut self) {
         let mut ctx = Ctx::new(self.event_tx.clone());
@@ -116,12 +122,17 @@ impl App {
             Cmd::Terminate(pid) => {
                 let conn = match self.conn.clone() {
                     Some(c) => c,
-                    None => { self.toast = Some("not connected".into()); return; }
+                    None => {
+                        self.toast = Some("not connected".into());
+                        return;
+                    }
                 };
                 let tx = self.event_tx.clone();
                 let confirm = crate::views::confirm::ConfirmView::new(
                     "terminate backend",
-                    format!("forcefully terminate pid {pid}? in-flight transaction will be aborted."),
+                    format!(
+                        "forcefully terminate pid {pid}? in-flight transaction will be aborted."
+                    ),
                     format!("SELECT pg_terminate_backend({pid});"),
                     move || {
                         let conn = conn.clone();
@@ -134,7 +145,13 @@ impl App {
                                 Err(e) => format!("terminate failed: {e}"),
                             };
                             let _ = tx.send(AppEvent::Toast(toast)).await;
-                            r.map(|b| if b { "terminated".into() } else { "no-op".into() })
+                            r.map(|b| {
+                                if b {
+                                    "terminated".into()
+                                } else {
+                                    "no-op".into()
+                                }
+                            })
                         }
                     },
                 );
@@ -150,7 +167,10 @@ impl App {
             "connections" => {
                 use crate::views::connections::ConnectionsView;
                 let active = self.conn.as_ref().map(|c| c.label.clone());
-                self.push(Box::new(ConnectionsView::new(&self.config, active.as_deref())));
+                self.push(Box::new(ConnectionsView::new(
+                    &self.config,
+                    active.as_deref(),
+                )));
                 return;
             }
             "themes" => {
@@ -167,7 +187,10 @@ impl App {
         // Everything else needs a connection.
         use crate::views::{
             activity::{ActivityKind, ActivityView},
-            databases::DatabasesView, query::QueryView, schemas::SchemasView, tables::TablesView,
+            databases::DatabasesView,
+            query::QueryView,
+            schemas::SchemasView,
+            tables::TablesView,
         };
         let conn = match self.conn.clone() {
             Some(c) => c,
@@ -179,19 +202,31 @@ impl App {
         match verb {
             "databases" | "db" => self.push(Box::new(DatabasesView::new(conn))),
             "schemas" | "sc" => self.push(Box::new(SchemasView::new(conn))),
-            "tables" | "tb" => self.push(Box::new(TablesView::new(conn, self.current_schema.clone()))),
+            "tables" | "tb" => {
+                self.push(Box::new(TablesView::new(conn, self.current_schema.clone())))
+            }
             "query" | "sql" => self.push(Box::new(QueryView::new(conn))),
-            "queries" => self.push(Box::new(ActivityView::new(ActivityKind::Queries, conn, self.config.ui.tick_ms))),
-            "locks" => self.push(Box::new(ActivityView::new(ActivityKind::Locks, conn, self.config.ui.tick_ms))),
-            "sessions" => self.push(Box::new(ActivityView::new(ActivityKind::Sessions, conn, self.config.ui.tick_ms))),
+            "queries" => self.push(Box::new(ActivityView::new(
+                ActivityKind::Queries,
+                conn,
+                self.config.ui.tick_ms,
+            ))),
+            "locks" => self.push(Box::new(ActivityView::new(
+                ActivityKind::Locks,
+                conn,
+                self.config.ui.tick_ms,
+            ))),
+            "sessions" => self.push(Box::new(ActivityView::new(
+                ActivityKind::Sessions,
+                conn,
+                self.config.ui.tick_ms,
+            ))),
             other => self.toast = Some(format!("not yet wired: :{other}")),
         }
     }
 
     fn handle_enter_drilldown(&mut self) -> Outcome {
-        use crate::views::{
-            databases::DatabasesView, schemas::SchemasView, tables::TablesView,
-        };
+        use crate::views::{databases::DatabasesView, schemas::SchemasView, tables::TablesView};
         // Snapshot the active view's title to decide what to do.
         let title = match self.views.last() {
             Some(v) => v.title().to_string(),
@@ -201,7 +236,9 @@ impl App {
         if title == "connections" {
             use crate::views::connections::ConnectionsView;
             let top = self.views.last().unwrap();
-            let view = top.as_any().and_then(|a| a.downcast_ref::<ConnectionsView>());
+            let view = top
+                .as_any()
+                .and_then(|a| a.downcast_ref::<ConnectionsView>());
             if let Some(v) = view
                 && let Some(name) = v.selected_name()
                 && let Some(cfg) = self.config.find_connection(name)
@@ -210,21 +247,21 @@ impl App {
                 let name = name.to_string();
                 let event_tx = self.event_tx.clone();
                 tokio::spawn(async move {
-                    match cfg_clone.resolve_secrets()
-                        .and_then(|c| c.as_target())
-                    {
-                        Ok(target) => {
-                            match crate::db::PgConn::connect(&target, name).await {
-                                Ok(conn) => {
-                                    let _ = event_tx.send(AppEvent::ConnectionSwitched(conn)).await;
-                                }
-                                Err(e) => {
-                                    let _ = event_tx.send(AppEvent::Toast(format!("connect failed: {e}"))).await;
-                                }
+                    match cfg_clone.resolve_secrets().and_then(|c| c.as_target()) {
+                        Ok(target) => match crate::db::PgConn::connect(&target, name).await {
+                            Ok(conn) => {
+                                let _ = event_tx.send(AppEvent::ConnectionSwitched(conn)).await;
                             }
-                        }
+                            Err(e) => {
+                                let _ = event_tx
+                                    .send(AppEvent::Toast(format!("connect failed: {e}")))
+                                    .await;
+                            }
+                        },
                         Err(e) => {
-                            let _ = event_tx.send(AppEvent::Toast(format!("config error: {e}"))).await;
+                            let _ = event_tx
+                                .send(AppEvent::Toast(format!("config error: {e}")))
+                                .await;
                         }
                     }
                 });
@@ -246,10 +283,13 @@ impl App {
                         tokio::spawn(async move {
                             match switch_database(&old_conn, &name).await {
                                 Ok(new_conn) => {
-                                    let _ = event_tx.send(AppEvent::ConnectionSwitched(new_conn)).await;
+                                    let _ =
+                                        event_tx.send(AppEvent::ConnectionSwitched(new_conn)).await;
                                 }
                                 Err(e) => {
-                                    let _ = event_tx.send(AppEvent::Toast(format!("switch failed: {e}"))).await;
+                                    let _ = event_tx
+                                        .send(AppEvent::Toast(format!("switch failed: {e}")))
+                                        .await;
                                 }
                             }
                         });
@@ -263,7 +303,10 @@ impl App {
                 if let Some(v) = view {
                     if let Some(s) = v.selected() {
                         self.current_schema = s.name.clone();
-                        return Outcome::Push(Box::new(TablesView::new(conn, self.current_schema.clone())));
+                        return Outcome::Push(Box::new(TablesView::new(
+                            conn,
+                            self.current_schema.clone(),
+                        )));
                     }
                 }
                 Outcome::Consumed
@@ -271,7 +314,9 @@ impl App {
             "tables" => {
                 use crate::views::table_inspector::TableInspectorView;
                 let top = self.views.last().unwrap();
-                let view = top.as_any().and_then(|a| a.downcast_ref::<crate::views::tables::TablesView>());
+                let view = top
+                    .as_any()
+                    .and_then(|a| a.downcast_ref::<crate::views::tables::TablesView>());
                 if let Some(v) = view {
                     if let Some(t) = v.selected() {
                         return Outcome::Push(Box::new(TableInspectorView::new(
@@ -289,7 +334,9 @@ impl App {
                 use crate::views::row_detail::RowDetailView;
                 use crate::views::table_inspector::TableInspectorView;
                 let top = self.views.last().unwrap();
-                let view = top.as_any().and_then(|a| a.downcast_ref::<TableInspectorView>());
+                let view = top
+                    .as_any()
+                    .and_then(|a| a.downcast_ref::<TableInspectorView>());
                 if let Some(insp) = view {
                     let conn = self.conn.clone().expect("conn present");
                     let schema = insp.schema().to_string();
@@ -301,7 +348,9 @@ impl App {
                     if let Some(fields_template) = insp.rows_view().detail_fields(&[]) {
                         let conn_for_pk = conn.clone();
                         tokio::spawn(async move {
-                            let pk = primary_key(&conn_for_pk, &schema, &table).await.unwrap_or_default();
+                            let pk = primary_key(&conn_for_pk, &schema, &table)
+                                .await
+                                .unwrap_or_default();
                             let pk_names: Vec<String> = pk.iter().map(|c| c.name.clone()).collect();
                             let mut fields = fields_template;
                             for f in &mut fields {
@@ -328,7 +377,9 @@ impl App {
             Some(v) if v.title() == "table" => v,
             _ => return Outcome::Pass,
         };
-        let view = top.as_any().and_then(|a| a.downcast_ref::<TableInspectorView>());
+        let view = top
+            .as_any()
+            .and_then(|a| a.downcast_ref::<TableInspectorView>());
         if let Some(insp) = view {
             let conn = self.conn.clone().expect("conn present");
             let schema = insp.schema().to_string();
@@ -337,7 +388,9 @@ impl App {
             if let Some(fields_template) = insp.rows_view().blank_fields(&[]) {
                 let conn_for_pk = conn.clone();
                 tokio::spawn(async move {
-                    let pk = primary_key(&conn_for_pk, &schema, &table).await.unwrap_or_default();
+                    let pk = primary_key(&conn_for_pk, &schema, &table)
+                        .await
+                        .unwrap_or_default();
                     let pk_names: Vec<String> = pk.iter().map(|c| c.name.clone()).collect();
                     let mut fields = fields_template;
                     for f in &mut fields {
@@ -421,8 +474,7 @@ impl App {
         }
 
         // open filter mode
-        if key.code == KeyCode::Char('/')
-            && self.views.last().is_some_and(|v| v.supports_filter())
+        if key.code == KeyCode::Char('/') && self.views.last().is_some_and(|v| v.supports_filter())
         {
             self.filter_input = Some(String::new());
             self.apply_filter("");
@@ -479,9 +531,13 @@ impl App {
                 // the only view in the stack (landing page), leave it — popping would
                 // empty the stack and quit the app.
                 let pop_picker = self.views.len() > 1
-                    && self.views.last()
+                    && self
+                        .views
+                        .last()
                         .and_then(|v| v.as_any())
-                        .and_then(|a| a.downcast_ref::<crate::views::connections::ConnectionsView>())
+                        .and_then(|a| {
+                            a.downcast_ref::<crate::views::connections::ConnectionsView>()
+                        })
                         .is_some();
                 if pop_picker {
                     self.pop(); // also calls on_enter on the new top
@@ -499,20 +555,18 @@ impl App {
             AppEvent::RestoreTheme(t) => {
                 self.theme = t;
             }
-            AppEvent::PersistTheme(name) => {
-                match theme::by_name(&name) {
-                    Some(t) => {
-                        self.theme = t;
-                        self.config.ui.theme = name;
-                        if let Err(e) = self.config.save(&self.config_path) {
-                            self.toast = Some(format!("save failed: {e}"));
-                        } else {
-                            self.toast = Some(format!("theme: {} (saved)", t.name));
-                        }
+            AppEvent::PersistTheme(name) => match theme::by_name(&name) {
+                Some(t) => {
+                    self.theme = t;
+                    self.config.ui.theme = name;
+                    if let Err(e) = self.config.save(&self.config_path) {
+                        self.toast = Some(format!("save failed: {e}"));
+                    } else {
+                        self.toast = Some(format!("theme: {} (saved)", t.name));
                     }
-                    None => self.toast = Some(format!("unknown theme: {name}")),
                 }
-            }
+                None => self.toast = Some(format!("unknown theme: {name}")),
+            },
         }
     }
 
@@ -520,8 +574,8 @@ impl App {
         let [head, main, foot] = ui::split(f.area());
 
         let title_owned = match &self.conn {
-            Some(c) => format!("postui  ·  {}", c.label),
-            None => "postui  ·  not connected".to_string(),
+            Some(c) => format!(" {}", c.label),
+            None => " not connected".to_string(),
         };
         let breadcrumb = self.views.last().map(|v| v.title()).unwrap_or("");
         header::render(f, head, self.theme, &title_owned, breadcrumb);
@@ -596,11 +650,9 @@ impl App {
 
 async fn switch_database(old: &PgConn, new_db: &str) -> crate::error::Result<PgConn> {
     // Pull the current host / port / user from the live conn.
-    let row = old.client()
-        .query_one(
-            "SELECT inet_server_port(), current_user",
-            &[],
-        )
+    let row = old
+        .client()
+        .query_one("SELECT inet_server_port(), current_user", &[])
         .await
         .map_err(|e| crate::error::DbError::Query {
             sql: "current params".into(),
@@ -611,7 +663,9 @@ async fn switch_database(old: &PgConn, new_db: &str) -> crate::error::Result<PgC
     // We can't recover the password from a live conn; the user must rely on
     // ~/.pgpass or a passwordless local auth for db-switch in v1.
     // Use Unix socket where available; fallback to localhost.
-    let target = format!("host=/var/run/postgresql user={user} dbname={new_db} port={port} application_name=postui");
+    let target = format!(
+        "host=/var/run/postgresql user={user} dbname={new_db} port={port} application_name=postui"
+    );
     let label = format!("{user}@{new_db}");
     Ok(PgConn::connect(&target, label).await?)
 }

@@ -13,29 +13,49 @@ pub struct ConfirmView {
     id: ViewId,
     confirm: Confirm,
     /// Action returns a future that resolves to a textual op result.
-    action: Arc<dyn Fn() -> futures::future::BoxFuture<'static, Result<String, crate::error::DbError>> + Send + Sync>,
+    action: Arc<
+        dyn Fn() -> futures::future::BoxFuture<'static, Result<String, crate::error::DbError>>
+            + Send
+            + Sync,
+    >,
 }
 
 impl ConfirmView {
-    pub fn new<F, Fut>(title: impl Into<String>, body: impl Into<String>, sql: impl Into<String>, action: F) -> Self
+    pub fn new<F, Fut>(
+        title: impl Into<String>,
+        body: impl Into<String>,
+        sql: impl Into<String>,
+        action: F,
+    ) -> Self
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<String, crate::error::DbError>> + Send + 'static,
     {
         use futures::FutureExt;
-        let action: Arc<dyn Fn() -> futures::future::BoxFuture<'static, Result<String, crate::error::DbError>> + Send + Sync>
-            = Arc::new(move || action().boxed());
+        let action: Arc<
+            dyn Fn() -> futures::future::BoxFuture<'static, Result<String, crate::error::DbError>>
+                + Send
+                + Sync,
+        > = Arc::new(move || action().boxed());
         Self {
             id: ViewId::next(),
-            confirm: Confirm { title: title.into(), body: body.into(), sql: sql.into() },
+            confirm: Confirm {
+                title: title.into(),
+                body: body.into(),
+                sql: sql.into(),
+            },
             action,
         }
     }
 }
 
 impl View for ConfirmView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "confirm" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "confirm"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         self.confirm.render(f, area, theme);
@@ -49,10 +69,12 @@ impl View for ConfirmView {
                 let action = self.action.clone();
                 tokio::spawn(async move {
                     let res = (action)().await;
-                    let _ = tx.send(AppEvent::ViewData {
-                        view_id,
-                        payload: ViewPayload::OpResult(res),
-                    }).await;
+                    let _ = tx
+                        .send(AppEvent::ViewData {
+                            view_id,
+                            payload: ViewPayload::OpResult(res),
+                        })
+                        .await;
                 });
                 Outcome::Pop
             }

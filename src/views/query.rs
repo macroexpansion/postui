@@ -10,8 +10,15 @@ use ratatui::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    db::{PgConn, query::{ResultSet, execute}},
-    ui::{editor::{Editor, shell_out_to_editor}, table::DataTable, theme::Theme},
+    db::{
+        PgConn,
+        query::{ResultSet, execute},
+    },
+    ui::{
+        editor::{Editor, shell_out_to_editor},
+        table::DataTable,
+        theme::Theme,
+    },
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
 };
 
@@ -46,7 +53,9 @@ impl QueryView {
             return;
         }
         let sql = self.editor.text();
-        if sql.trim().is_empty() { return; }
+        if sql.trim().is_empty() {
+            return;
+        }
 
         let view_id = self.id;
         let conn = self.conn.clone();
@@ -55,10 +64,12 @@ impl QueryView {
         let tx = ctx.event_tx.clone();
         tokio::spawn(async move {
             let result = execute(&conn, &sql, token).await;
-            let _ = tx.send(AppEvent::ViewData {
-                view_id,
-                payload: ViewPayload::Query(result),
-            }).await;
+            let _ = tx
+                .send(AppEvent::ViewData {
+                    view_id,
+                    payload: ViewPayload::Query(result),
+                })
+                .await;
         });
     }
 
@@ -69,7 +80,9 @@ impl QueryView {
     }
 
     fn select_result(&mut self, idx: usize) {
-        if idx >= self.results.len() { return; }
+        if idx >= self.results.len() {
+            return;
+        }
         self.active_result = idx;
         let r = &self.results[idx];
         self.active_table = DataTable::new(r.headers.iter().map(String::as_str).collect());
@@ -86,8 +99,12 @@ impl QueryView {
 }
 
 impl View for QueryView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "query" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "query"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         let chunks = Layout::default()
@@ -100,23 +117,40 @@ impl View for QueryView {
             .split(area);
         self.editor.render(f, chunks[0], theme);
 
-        let titles: Vec<String> = self.results.iter().enumerate().map(|(i, r)| {
-            if let Some(n) = r.affected {
-                format!("#{} affected={n}", i + 1)
-            } else {
-                format!("#{} rows={}", i + 1, r.rows.len())
-            }
-        }).collect();
+        let titles: Vec<String> = self
+            .results
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                if let Some(n) = r.affected {
+                    format!("#{} affected={n}", i + 1)
+                } else {
+                    format!("#{} rows={}", i + 1, r.rows.len())
+                }
+            })
+            .collect();
         let tabs = Tabs::new(titles)
             .select(self.active_result)
-            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.border)),
+            )
             .style(Style::default().fg(theme.muted))
-            .highlight_style(Style::default().fg(theme.accent).add_modifier(Modifier::BOLD));
+            .highlight_style(
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            );
         f.render_widget(tabs, chunks[1]);
 
         if let Some(e) = &self.error {
             let p = Paragraph::new(format!("error: {e}"))
-                .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.error)))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme.error)),
+                )
                 .style(Style::default().fg(theme.error));
             f.render_widget(p, chunks[2]);
         } else if self.results.is_empty() {
@@ -126,7 +160,11 @@ impl View for QueryView {
                 "type SQL above; ^R or F5 to run; ^E to open in $EDITOR"
             };
             let p = Paragraph::new(hint)
-                .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme.border)),
+                )
                 .style(Style::default().fg(theme.muted));
             f.render_widget(p, chunks[2]);
         } else {
@@ -138,9 +176,18 @@ impl View for QueryView {
         // Run / cancel / open-in-editor / cycle-results bindings come first.
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
-                KeyCode::Char('r') => { self.run(ctx); return Outcome::Consumed; }
-                KeyCode::Char('e') => { self.open_in_editor(); return Outcome::Consumed; }
-                KeyCode::Char('c') => { self.cancel(); return Outcome::Consumed; }
+                KeyCode::Char('r') => {
+                    self.run(ctx);
+                    return Outcome::Consumed;
+                }
+                KeyCode::Char('e') => {
+                    self.open_in_editor();
+                    return Outcome::Consumed;
+                }
+                KeyCode::Char('c') => {
+                    self.cancel();
+                    return Outcome::Consumed;
+                }
                 KeyCode::Char('n') => {
                     if !self.results.is_empty() {
                         self.select_result((self.active_result + 1) % self.results.len());
@@ -149,7 +196,11 @@ impl View for QueryView {
                 }
                 KeyCode::Char('p') => {
                     if !self.results.is_empty() {
-                        let i = if self.active_result == 0 { self.results.len() - 1 } else { self.active_result - 1 };
+                        let i = if self.active_result == 0 {
+                            self.results.len() - 1
+                        } else {
+                            self.active_result - 1
+                        };
                         self.select_result(i);
                     }
                     return Outcome::Consumed;
@@ -187,7 +238,11 @@ impl View for QueryView {
         }
     }
 
-    fn set_filter(&mut self, filter: &str) { self.active_table.set_filter(filter); }
+    fn set_filter(&mut self, filter: &str) {
+        self.active_table.set_filter(filter);
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

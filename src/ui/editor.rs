@@ -8,9 +8,7 @@ use std::{
 use crossterm::{
     ExecutableCommand,
     event::{DisableMouseCapture, EnableMouseCapture},
-    terminal::{
-        EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
-    },
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
     Frame,
@@ -59,13 +57,17 @@ impl Editor {
 }
 
 impl Default for Editor {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Suspend the TUI, open the user's $EDITOR with the given text, restore.
 /// Returns the new text on success.
 pub fn shell_out_to_editor(initial: &str) -> std::io::Result<String> {
-    let editor = std::env::var("EDITOR").or_else(|_| std::env::var("VISUAL")).unwrap_or_else(|_| "nvim".into());
+    let editor = std::env::var("EDITOR")
+        .or_else(|_| std::env::var("VISUAL"))
+        .unwrap_or_else(|_| "nvim".into());
 
     // Write current buffer to a temp file.
     let mut tmp = tempfile::Builder::new()

@@ -16,9 +16,13 @@ pub async fn start() -> TestDb {
         .expect("postgres container start");
     let host = container.get_host().await.expect("host");
     let port = container.get_host_port_ipv4(5432).await.expect("port");
-    let conn_str = format!("host={host} port={port} user=postgres password=postgres dbname=postgres");
+    let conn_str =
+        format!("host={host} port={port} user=postgres password=postgres dbname=postgres");
     let conn = PgConn::connect(&conn_str, "test".into())
         .await
         .expect("connect");
-    TestDb { conn, _container: container }
+    TestDb {
+        conn,
+        _container: container,
+    }
 }

@@ -20,18 +20,26 @@ pub struct ConnectionsView {
 impl ConnectionsView {
     pub fn new(config: &Config, active: Option<&str>) -> Self {
         let mut table = DataTable::new(vec!["", "name", "host", "user", "database"]);
-        let rows = config.connections.iter().map(|c| {
-            let active_mark = if active == Some(c.name.as_str()) { "*" } else { "" };
-            vec![
-                active_mark.into(),
-                c.name.clone(),
-                c.host.clone().unwrap_or_else(|| {
-                    c.url.as_deref().map(short_host).unwrap_or_default()
-                }),
-                c.user.clone().unwrap_or_default(),
-                c.database.clone().unwrap_or_default(),
-            ]
-        }).collect();
+        let rows = config
+            .connections
+            .iter()
+            .map(|c| {
+                let active_mark = if active == Some(c.name.as_str()) {
+                    "*"
+                } else {
+                    ""
+                };
+                vec![
+                    active_mark.into(),
+                    c.name.clone(),
+                    c.host
+                        .clone()
+                        .unwrap_or_else(|| c.url.as_deref().map(short_host).unwrap_or_default()),
+                    c.user.clone().unwrap_or_default(),
+                    c.database.clone().unwrap_or_default(),
+                ]
+            })
+            .collect();
         table.set_rows(rows);
         Self {
             id: ViewId::next(),
@@ -41,7 +49,10 @@ impl ConnectionsView {
     }
 
     pub fn selected_name(&self) -> Option<&str> {
-        self.table.selected_index().and_then(|i| self.names.get(i)).map(String::as_str)
+        self.table
+            .selected_index()
+            .and_then(|i| self.names.get(i))
+            .map(String::as_str)
     }
 }
 
@@ -53,8 +64,12 @@ fn short_host(uri: &str) -> String {
 }
 
 impl View for ConnectionsView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "connections" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "connections"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         self.table.render(f, area, theme);
@@ -74,8 +89,14 @@ impl View for ConnectionsView {
 
     fn apply(&mut self, _payload: ViewPayload) {}
 
-    fn set_filter(&mut self, filter: &str) { self.table.set_filter(filter); }
-    fn supports_filter(&self) -> bool { true }
+    fn set_filter(&mut self, filter: &str) {
+        self.table.set_filter(filter);
+    }
+    fn supports_filter(&self) -> bool {
+        true
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

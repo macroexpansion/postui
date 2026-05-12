@@ -4,7 +4,10 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{Frame, layout::Rect};
 
 use crate::{
-    db::{PgConn, catalog::{DatabaseInfo, list_databases}},
+    db::{
+        PgConn,
+        catalog::{DatabaseInfo, list_databases},
+    },
     keys::vim_motion,
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
@@ -37,8 +40,12 @@ impl DatabasesView {
 }
 
 impl View for DatabasesView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "databases" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "databases"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         self.table.render(f, area, theme);
@@ -62,10 +69,12 @@ impl View for DatabasesView {
         let tx = ctx.event_tx.clone();
         tokio::spawn(async move {
             let result = list_databases(&conn).await;
-            let _ = tx.send(AppEvent::ViewData {
-                view_id,
-                payload: ViewPayload::Databases(result),
-            }).await;
+            let _ = tx
+                .send(AppEvent::ViewData {
+                    view_id,
+                    payload: ViewPayload::Databases(result),
+                })
+                .await;
         });
     }
 
@@ -74,11 +83,11 @@ impl View for DatabasesView {
             match res {
                 Ok(rows) => {
                     self.rows = rows;
-                    let display: Vec<Vec<String>> = self.rows.iter().map(|d| vec![
-                        d.name.clone(),
-                        d.owner.clone(),
-                        d.encoding.clone(),
-                    ]).collect();
+                    let display: Vec<Vec<String>> = self
+                        .rows
+                        .iter()
+                        .map(|d| vec![d.name.clone(), d.owner.clone(), d.encoding.clone()])
+                        .collect();
                     self.table.set_rows(display);
                     self.error = None;
                 }
@@ -87,8 +96,14 @@ impl View for DatabasesView {
         }
     }
 
-    fn set_filter(&mut self, filter: &str) { self.table.set_filter(filter); }
-    fn supports_filter(&self) -> bool { true }
+    fn set_filter(&mut self, filter: &str) {
+        self.table.set_filter(filter);
+    }
+    fn supports_filter(&self) -> bool {
+        true
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

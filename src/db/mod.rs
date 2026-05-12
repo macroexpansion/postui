@@ -34,7 +34,10 @@ impl PgConn {
             }
         });
 
-        Ok(Self { inner: Arc::new(client), label })
+        Ok(Self {
+            inner: Arc::new(client),
+            label,
+        })
     }
 
     pub fn client(&self) -> &Client {

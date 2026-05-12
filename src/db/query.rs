@@ -4,7 +4,10 @@ use std::time::Instant;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::{db::{PgConn, types::row_to_strings}, error::DbError};
+use crate::{
+    db::{PgConn, types::row_to_strings},
+    error::DbError,
+};
 
 /// One result set returned by a single statement.
 #[derive(Debug, Clone)]
@@ -13,7 +16,7 @@ pub struct ResultSet {
     pub headers: Vec<String>,
     pub rows: Vec<Vec<String>>,
     pub elapsed_ms: u128,
-    pub affected: Option<u64>,   // for non-SELECT
+    pub affected: Option<u64>, // for non-SELECT
 }
 
 /// Execute one or more statements separated by `;`. Returns one `ResultSet`
@@ -32,7 +35,9 @@ pub async fn execute(
             return Err(DbError::Cancelled);
         }
         let trimmed = stmt.trim();
-        if trimmed.is_empty() { continue; }
+        if trimmed.is_empty() {
+            continue;
+        }
         let started = Instant::now();
 
         let is_select = trimmed.to_ascii_uppercase().starts_with("SELECT")
@@ -95,8 +100,10 @@ pub fn split_statements(sql: &str) -> Vec<String> {
         }
         if !in_single && i + 1 < chars.len() && chars[i] == '$' && chars[i + 1] == '$' {
             in_dollar = !in_dollar;
-            buf.push('$'); buf.push('$');
-            i += 2; continue;
+            buf.push('$');
+            buf.push('$');
+            i += 2;
+            continue;
         }
         buf.push(c);
         i += 1;

@@ -3,7 +3,12 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use postui::{
-    app, cli::Cli, config::Config, db::PgConn, error::{ConfigError, Result}, logging, term,
+    app,
+    cli::Cli,
+    config::Config,
+    db::PgConn,
+    error::{ConfigError, Result},
+    logging, term,
 };
 
 fn default_config_path() -> PathBuf {
@@ -49,9 +54,9 @@ async fn bootstrap_connection(cli: &Cli, config: &Config) -> Result<Option<PgCon
         return Ok(Some(PgConn::connect(uri, label).await?));
     }
     if let Some(name) = &cli.connection {
-        let cfg = config.find_connection(name).ok_or_else(|| {
-            ConfigError::Parse(format!("no connection named '{name}' in config"))
-        })?;
+        let cfg = config
+            .find_connection(name)
+            .ok_or_else(|| ConfigError::Parse(format!("no connection named '{name}' in config")))?;
         let resolved = cfg.resolve_secrets()?;
         let target = resolved.as_target()?;
         return Ok(Some(PgConn::connect(&target, name.clone()).await?));

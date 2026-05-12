@@ -122,13 +122,31 @@ impl DataTable {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
-        let header_row = Row::new(self.headers.iter().cloned().map(Cell::from).collect::<Vec<_>>())
-            .style(Style::default().fg(theme.table_header).add_modifier(Modifier::BOLD));
+        let header_row = Row::new(
+            self.headers
+                .iter()
+                .cloned()
+                .map(Cell::from)
+                .collect::<Vec<_>>(),
+        )
+        .style(
+            Style::default()
+                .fg(theme.table_header)
+                .add_modifier(Modifier::BOLD),
+        );
 
         let body: Vec<Row> = self
             .visible
             .iter()
-            .map(|&i| Row::new(self.rows[i].iter().cloned().map(Cell::from).collect::<Vec<_>>()))
+            .map(|&i| {
+                Row::new(
+                    self.rows[i]
+                        .iter()
+                        .cloned()
+                        .map(Cell::from)
+                        .collect::<Vec<_>>(),
+                )
+            })
             .collect();
 
         let widths: Vec<Constraint> = self
@@ -139,7 +157,11 @@ impl DataTable {
 
         let table = RTable::new(body, widths)
             .header(header_row)
-            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border)))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.border)),
+            )
             .row_highlight_style(
                 Style::default()
                     .bg(theme.selection_bg)

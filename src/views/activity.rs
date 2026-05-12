@@ -18,7 +18,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ActivityKind { Queries, Locks, Sessions }
+pub enum ActivityKind {
+    Queries,
+    Locks,
+    Sessions,
+}
 
 pub struct ActivityView {
     id: ViewId,
@@ -37,9 +41,20 @@ impl ActivityView {
             ActivityKind::Queries | ActivityKind::Sessions => {
                 DataTable::new(vec!["pid", "user", "db", "state", "wait", "query"])
             }
-            ActivityKind::Locks => DataTable::new(vec!["pid", "mode", "granted", "relation", "query"]),
+            ActivityKind::Locks => {
+                DataTable::new(vec!["pid", "mode", "granted", "relation", "query"])
+            }
         };
-        Self { id: ViewId::next(), kind, table, rows: vec![], locks: vec![], poll_token: None, conn, tick_ms }
+        Self {
+            id: ViewId::next(),
+            kind,
+            table,
+            rows: vec![],
+            locks: vec![],
+            poll_token: None,
+            conn,
+            tick_ms,
+        }
     }
 
     pub fn selected_pid(&self) -> Option<i32> {
@@ -50,11 +65,15 @@ impl ActivityView {
         }
     }
 
-    pub fn conn(&self) -> &PgConn { &self.conn }
+    pub fn conn(&self) -> &PgConn {
+        &self.conn
+    }
 }
 
 impl View for ActivityView {
-    fn id(&self) -> ViewId { self.id }
+    fn id(&self) -> ViewId {
+        self.id
+    }
     fn title(&self) -> &str {
         match self.kind {
             ActivityKind::Queries => "queries",
@@ -92,7 +111,13 @@ impl View for ActivityView {
                                 Err(e) => format!("cancel failed: {e}"),
                             };
                             let _ = tx.send(AppEvent::Toast(toast)).await;
-                            r.map(|b| if b { "cancelled".into() } else { "no-op".into() })
+                            r.map(|b| {
+                                if b {
+                                    "cancelled".into()
+                                } else {
+                                    "no-op".into()
+                                }
+                            })
                         }
                     },
                 );
@@ -145,40 +170,70 @@ impl View for ActivityView {
     }
 
     fn on_leave(&mut self, _ctx: &mut Ctx) {
-        if let Some(t) = self.poll_token.take() { t.cancel(); }
+        if let Some(t) = self.poll_token.take() {
+            t.cancel();
+        }
     }
 
     fn apply(&mut self, payload: ViewPayload) {
         match (self.kind, payload) {
             (ActivityKind::Queries | ActivityKind::Sessions, ViewPayload::Activity(Ok(rows))) => {
                 self.rows = rows;
-                let display: Vec<Vec<String>> = self.rows.iter().map(|r| vec![
-                    r.pid.to_string(),
-                    r.usename.clone().unwrap_or_default(),
-                    r.datname.clone().unwrap_or_default(),
-                    r.state.clone().unwrap_or_default(),
-                    r.wait_event.clone().unwrap_or_default(),
-                    r.query.clone().unwrap_or_default().chars().take(60).collect(),
-                ]).collect();
+                let display: Vec<Vec<String>> = self
+                    .rows
+                    .iter()
+                    .map(|r| {
+                        vec![
+                            r.pid.to_string(),
+                            r.usename.clone().unwrap_or_default(),
+                            r.datname.clone().unwrap_or_default(),
+                            r.state.clone().unwrap_or_default(),
+                            r.wait_event.clone().unwrap_or_default(),
+                            r.query
+                                .clone()
+                                .unwrap_or_default()
+                                .chars()
+                                .take(60)
+                                .collect(),
+                        ]
+                    })
+                    .collect();
                 self.table.set_rows(display);
             }
             (ActivityKind::Locks, ViewPayload::Locks(Ok(rows))) => {
                 self.locks = rows;
-                let display: Vec<Vec<String>> = self.locks.iter().map(|r| vec![
-                    r.pid.to_string(),
-                    r.mode.clone().unwrap_or_default(),
-                    if r.granted { "yes" } else { "no" }.into(),
-                    r.relation.clone().unwrap_or_default(),
-                    r.query.clone().unwrap_or_default().chars().take(60).collect(),
-                ]).collect();
+                let display: Vec<Vec<String>> = self
+                    .locks
+                    .iter()
+                    .map(|r| {
+                        vec![
+                            r.pid.to_string(),
+                            r.mode.clone().unwrap_or_default(),
+                            if r.granted { "yes" } else { "no" }.into(),
+                            r.relation.clone().unwrap_or_default(),
+                            r.query
+                                .clone()
+                                .unwrap_or_default()
+                                .chars()
+                                .take(60)
+                                .collect(),
+                        ]
+                    })
+                    .collect();
                 self.table.set_rows(display);
             }
             _ => {}
         }
     }
 
-    fn set_filter(&mut self, filter: &str) { self.table.set_filter(filter); }
-    fn supports_filter(&self) -> bool { true }
+    fn set_filter(&mut self, filter: &str) {
+        self.table.set_filter(filter);
+    }
+    fn supports_filter(&self) -> bool {
+        true
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

@@ -37,7 +37,10 @@ pub enum DbError {
     Connect(String),
 
     #[error("query failed: {source}\n  sql: {sql}")]
-    Query { sql: String, source: Box<dyn std::error::Error + Send + Sync> },
+    Query {
+        sql: String,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 
     #[error("type conversion error: {0}")]
     Type(String),

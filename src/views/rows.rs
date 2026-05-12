@@ -1,10 +1,17 @@
 //! Paged rows view (used standalone and embedded in the table inspector).
 
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{Frame, layout::{Constraint, Direction, Layout, Rect}, widgets::Paragraph};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    widgets::Paragraph,
+};
 
 use crate::{
-    db::{PgConn, rows::{PAGE_SIZE, Page, fetch_page}},
+    db::{
+        PgConn,
+        rows::{PAGE_SIZE, Page, fetch_page},
+    },
     keys::{Motion, vim_motion},
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
@@ -50,42 +57,62 @@ impl RowsView {
         let tx = ctx.event_tx.clone();
         tokio::spawn(async move {
             let result = fetch_page(&conn, &schema, &name, offset).await;
-            let _ = tx.send(AppEvent::ViewData {
-                view_id,
-                payload: ViewPayload::Rows(result),
-            }).await;
+            let _ = tx
+                .send(AppEvent::ViewData {
+                    view_id,
+                    payload: ViewPayload::Rows(result),
+                })
+                .await;
         });
     }
 
     /// Build a list of DetailFields for the current selection, marking PK columns.
-    pub fn detail_fields(&self, pk_names: &[String]) -> Option<Vec<crate::ui::detail::DetailField>> {
+    pub fn detail_fields(
+        &self,
+        pk_names: &[String],
+    ) -> Option<Vec<crate::ui::detail::DetailField>> {
         let page = self.page.as_ref()?;
         let row_idx = self.table.selected_index()?;
         let row = page.rows.get(row_idx)?;
         let pk_set: std::collections::HashSet<&String> = pk_names.iter().collect();
-        Some(page.headers.iter().zip(row.iter()).map(|(h, v)| crate::ui::detail::DetailField {
-            name: h.clone(),
-            original: v.clone(),
-            edited: v.clone(),
-            is_pk: pk_set.contains(h),
-        }).collect())
+        Some(
+            page.headers
+                .iter()
+                .zip(row.iter())
+                .map(|(h, v)| crate::ui::detail::DetailField {
+                    name: h.clone(),
+                    original: v.clone(),
+                    edited: v.clone(),
+                    is_pk: pk_set.contains(h),
+                })
+                .collect(),
+        )
     }
 
     pub fn blank_fields(&self, pk_names: &[String]) -> Option<Vec<crate::ui::detail::DetailField>> {
         let page = self.page.as_ref()?;
         let pk_set: std::collections::HashSet<&String> = pk_names.iter().collect();
-        Some(page.headers.iter().map(|h| crate::ui::detail::DetailField {
-            name: h.clone(),
-            original: String::new(),
-            edited: String::new(),
-            is_pk: pk_set.contains(h),
-        }).collect())
+        Some(
+            page.headers
+                .iter()
+                .map(|h| crate::ui::detail::DetailField {
+                    name: h.clone(),
+                    original: String::new(),
+                    edited: String::new(),
+                    is_pk: pk_set.contains(h),
+                })
+                .collect(),
+        )
     }
 }
 
 impl View for RowsView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "rows" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "rows"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         let chunks = Layout::default()
@@ -157,8 +184,14 @@ impl View for RowsView {
         }
     }
 
-    fn set_filter(&mut self, filter: &str) { self.table.set_filter(filter); }
-    fn supports_filter(&self) -> bool { true }
+    fn set_filter(&mut self, filter: &str) {
+        self.table.set_filter(filter);
+    }
+    fn supports_filter(&self) -> bool {
+        true
+    }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }

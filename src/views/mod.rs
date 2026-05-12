@@ -58,12 +58,15 @@ pub enum AppEvent {
 impl std::fmt::Debug for AppEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AppEvent::ViewData { view_id, payload } => f.debug_struct("ViewData")
+            AppEvent::ViewData { view_id, payload } => f
+                .debug_struct("ViewData")
                 .field("view_id", view_id)
                 .field("payload", payload)
                 .finish(),
             AppEvent::Toast(s) => f.debug_tuple("Toast").field(s).finish(),
-            AppEvent::ConnectionSwitched(c) => f.debug_tuple("ConnectionSwitched").field(c).finish(),
+            AppEvent::ConnectionSwitched(c) => {
+                f.debug_tuple("ConnectionSwitched").field(c).finish()
+            }
             AppEvent::PushView(_) => f.debug_tuple("PushView").field(&"<view>").finish(),
             AppEvent::PreviewTheme(t) => f.debug_tuple("PreviewTheme").field(&t.name).finish(),
             AppEvent::PersistTheme(s) => f.debug_tuple("PersistTheme").field(s).finish(),
@@ -130,11 +133,15 @@ pub trait View: Send {
 
     /// Whether `/` should open filter mode for this view. Defaults to `false`
     /// so views with no list (e.g. SQL editor) can receive `/` as a literal key.
-    fn supports_filter(&self) -> bool { false }
+    fn supports_filter(&self) -> bool {
+        false
+    }
 
     /// Optional cast for the App to access view-specific state (e.g., selection).
     /// Implementations should return `Some(self)`.
-    fn as_any(&self) -> Option<&dyn std::any::Any> { None }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        None
+    }
 }
 
 /// A transient overlay rendered on top of the active view. Unlike `View`,
@@ -147,7 +154,9 @@ pub trait Modal: Send {
     fn apply(&mut self, _payload: ViewPayload) {}
     fn on_tick(&mut self, _ctx: &mut Ctx) {}
     /// Footer hint string shown while this modal is open.
-    fn hints(&self) -> &str { "" }
+    fn hints(&self) -> &str {
+        ""
+    }
 }
 
 pub enum ModalOutcome {

@@ -82,8 +82,8 @@ impl Config {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(ConfigError::Io)?;
         }
-        let contents = toml::to_string_pretty(self)
-            .map_err(|e| ConfigError::Parse(e.to_string()))?;
+        let contents =
+            toml::to_string_pretty(self).map_err(|e| ConfigError::Parse(e.to_string()))?;
         std::fs::write(path, contents).map_err(ConfigError::Io)?;
         Ok(())
     }
@@ -114,9 +114,10 @@ impl ConnectionConfig {
         if let Some(u) = &self.url {
             return Ok(u.clone());
         }
-        let host = self.host.as_deref().ok_or_else(|| {
-            ConfigError::BadUri("connection needs either `url` or `host`".into())
-        })?;
+        let host = self
+            .host
+            .as_deref()
+            .ok_or_else(|| ConfigError::BadUri("connection needs either `url` or `host`".into()))?;
         let mut parts = vec![format!("host={host}")];
         if let Some(p) = self.port {
             parts.push(format!("port={p}"));
@@ -149,7 +150,9 @@ fn interpolate(input: &str) -> Result<String, ConfigError> {
             .find('}')
             .ok_or_else(|| ConfigError::Parse(format!("unclosed ${{ in {input:?}")))?;
         let var = &after[..end];
-        let val = std::env::var(var).map_err(|_| ConfigError::MissingEnv { var: var.to_string() })?;
+        let val = std::env::var(var).map_err(|_| ConfigError::MissingEnv {
+            var: var.to_string(),
+        })?;
         out.push_str(&val);
         rest = &after[end + 1..];
     }
@@ -198,19 +201,28 @@ mod tests {
         assert_eq!(cfg.ui.page_size, 50);
         assert_eq!(cfg.connections.len(), 2);
         assert_eq!(cfg.connections[0].name, "local");
-        assert_eq!(cfg.connections[1].url.as_deref(), Some("postgres://andrew@db.stage:5432/app"));
-        assert_eq!(cfg.views.queries.as_ref().and_then(|v| v.tick_ms), Some(1000));
+        assert_eq!(
+            cfg.connections[1].url.as_deref(),
+            Some("postgres://andrew@db.stage:5432/app")
+        );
+        assert_eq!(
+            cfg.views.queries.as_ref().and_then(|v| v.tick_ms),
+            Some(1000)
+        );
     }
 
     #[test]
     fn find_connection_works() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "prod"
             host = "h"
             user = "u"
             database = "d"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         assert!(cfg.find_connection("prod").is_some());
         assert!(cfg.find_connection("missing").is_none());
     }
@@ -224,43 +236,60 @@ mod tests {
     #[test]
     fn interpolates_env_in_password() {
         // SAFETY: tests are isolated; we set + unset.
-        unsafe { std::env::set_var("POSTUI_TEST_PW", "s3cret"); }
-        let cfg = Config::from_toml(r#"
+        unsafe {
+            std::env::set_var("POSTUI_TEST_PW", "s3cret");
+        }
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             host = "h"
             user = "u"
             database = "d"
             password = "${POSTUI_TEST_PW}"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let resolved = cfg.connections[0].resolve_secrets().unwrap();
         assert_eq!(resolved.password.as_deref(), Some("s3cret"));
-        unsafe { std::env::remove_var("POSTUI_TEST_PW"); }
+        unsafe {
+            std::env::remove_var("POSTUI_TEST_PW");
+        }
     }
 
     #[test]
     fn interpolates_env_in_url() {
-        unsafe { std::env::set_var("POSTUI_TEST_URL", "postgres://a:b@h/d"); }
-        let cfg = Config::from_toml(r#"
+        unsafe {
+            std::env::set_var("POSTUI_TEST_URL", "postgres://a:b@h/d");
+        }
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             url = "${POSTUI_TEST_URL}"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let resolved = cfg.connections[0].resolve_secrets().unwrap();
         assert_eq!(resolved.url.as_deref(), Some("postgres://a:b@h/d"));
-        unsafe { std::env::remove_var("POSTUI_TEST_URL"); }
+        unsafe {
+            std::env::remove_var("POSTUI_TEST_URL");
+        }
     }
 
     #[test]
     fn missing_env_var_errors() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             host = "h"
             user = "u"
             database = "d"
             password = "${POSTUI_DEFINITELY_NOT_SET}"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let err = cfg.connections[0].resolve_secrets().unwrap_err();
         match err {
             ConfigError::MissingEnv { var } => assert_eq!(var, "POSTUI_DEFINITELY_NOT_SET"),
@@ -270,25 +299,31 @@ mod tests {
 
     #[test]
     fn passthrough_when_no_placeholder() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             host = "h"
             user = "u"
             database = "d"
             password = "literal-pw"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let resolved = cfg.connections[0].resolve_secrets().unwrap();
         assert_eq!(resolved.password.as_deref(), Some("literal-pw"));
     }
 
     #[test]
     fn as_target_from_url() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             url = "postgres://u:p@h:5432/d"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let target = cfg.connections[0].as_target().unwrap();
         assert!(target.contains("postgres://"));
         assert!(target.contains("u"));
@@ -297,7 +332,8 @@ mod tests {
 
     #[test]
     fn as_target_from_fields() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
             host = "h"
@@ -306,7 +342,9 @@ mod tests {
             database = "d"
             password = "pw"
             sslmode = "require"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let target = cfg.connections[0].as_target().unwrap();
         // libpq-style key=value string
         assert!(target.contains("host=h"));
@@ -319,10 +357,13 @@ mod tests {
 
     #[test]
     fn as_target_with_no_fields_errors() {
-        let cfg = Config::from_toml(r#"
+        let cfg = Config::from_toml(
+            r#"
             [[connection]]
             name = "x"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let err = cfg.connections[0].as_target().unwrap_err();
         assert!(matches!(err, ConfigError::BadUri(_)));
     }

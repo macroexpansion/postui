@@ -15,23 +15,85 @@ struct CommandDef {
 }
 
 static COMMANDS: &[CommandDef] = &[
-    CommandDef { name: "databases",   aliases: &["db"],  arg_kind: ArgKind::None },
-    CommandDef { name: "schemas",     aliases: &["sc"],  arg_kind: ArgKind::None },
-    CommandDef { name: "tables",      aliases: &["tb"],  arg_kind: ArgKind::None },
-    CommandDef { name: "query",       aliases: &["sql"], arg_kind: ArgKind::None },
-    CommandDef { name: "queries",     aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "locks",       aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "sessions",    aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "connections", aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "themes",      aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "help",        aliases: &[],      arg_kind: ArgKind::None },
-    CommandDef { name: "quit",        aliases: &["q"],   arg_kind: ArgKind::None },
-    CommandDef { name: "theme",       aliases: &[],      arg_kind: ArgKind::ThemeNames },
-    CommandDef { name: "connect",     aliases: &[],      arg_kind: ArgKind::ConnectionNames },
-    CommandDef { name: "terminate",   aliases: &[],      arg_kind: ArgKind::Freeform },
+    CommandDef {
+        name: "databases",
+        aliases: &["db"],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "schemas",
+        aliases: &["sc"],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "tables",
+        aliases: &["tb"],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "query",
+        aliases: &["sql"],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "queries",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "locks",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "sessions",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "connections",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "themes",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "help",
+        aliases: &[],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "quit",
+        aliases: &["q"],
+        arg_kind: ArgKind::None,
+    },
+    CommandDef {
+        name: "theme",
+        aliases: &[],
+        arg_kind: ArgKind::ThemeNames,
+    },
+    CommandDef {
+        name: "connect",
+        aliases: &[],
+        arg_kind: ArgKind::ConnectionNames,
+    },
+    CommandDef {
+        name: "terminate",
+        aliases: &[],
+        arg_kind: ArgKind::Freeform,
+    },
 ];
 
-static THEME_NAMES: &[&str] = &["default", "dracula", "gruvbox-dark", "nord", "solarized-dark"];
+static THEME_NAMES: &[&str] = &[
+    "default",
+    "dracula",
+    "gruvbox-dark",
+    "nord",
+    "solarized-dark",
+];
 
 pub fn suggest(buffer: &str) -> Option<String> {
     if buffer.is_empty() {
@@ -43,13 +105,15 @@ pub fn suggest(buffer: &str) -> Option<String> {
     };
 
     if let Some(tail) = tail {
-        let cmd = COMMANDS.iter().find(|c| {
-            c.name == head || c.aliases.contains(&head)
-        });
+        let cmd = COMMANDS
+            .iter()
+            .find(|c| c.name == head || c.aliases.contains(&head));
         let cmd = cmd?;
         match cmd.arg_kind {
             ArgKind::ThemeNames => {
-                let full = THEME_NAMES.iter().find(|&&n| n.starts_with(tail) && n != tail)?;
+                let full = THEME_NAMES
+                    .iter()
+                    .find(|&&n| n.starts_with(tail) && n != tail)?;
                 Some(full[tail.len()..].to_string())
             }
             ArgKind::ConnectionNames | ArgKind::Freeform | ArgKind::None => None,
@@ -104,10 +168,10 @@ impl Palette {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Cmd {
     Quit,
-    Open(String),                  // :tables, :databases, ...
-    Theme(String),                 // :theme dracula
-    Terminate(i32),                // :terminate <pid>
-    Connect(Option<String>),       // :connect [uri-or-name]
+    Open(String),            // :tables, :databases, ...
+    Theme(String),           // :theme dracula
+    Terminate(i32),          // :terminate <pid>
+    Connect(Option<String>), // :connect [uri-or-name]
     Unknown(String),
 }
 
@@ -173,10 +237,7 @@ mod tests {
     #[test]
     fn parses_connect() {
         assert_eq!(parse("connect"), Cmd::Connect(None));
-        assert_eq!(
-            parse("connect prod"),
-            Cmd::Connect(Some("prod".into()))
-        );
+        assert_eq!(parse("connect prod"), Cmd::Connect(Some("prod".into())));
         assert_eq!(
             parse("connect postgres://u:p@h/db"),
             Cmd::Connect(Some("postgres://u:p@h/db".into()))

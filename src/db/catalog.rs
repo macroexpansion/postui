@@ -52,39 +52,60 @@ const SQL_LIST_TABLES: &str = "
     ORDER BY c.relname";
 
 pub async fn list_databases(conn: &PgConn) -> Result<Vec<DatabaseInfo>, DbError> {
-    let rows = conn.client()
+    let rows = conn
+        .client()
         .query(SQL_LIST_DATABASES, &[])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_DATABASES.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| DatabaseInfo {
-        name: r.get(0),
-        owner: r.get(1),
-        encoding: r.get(2),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_DATABASES.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| DatabaseInfo {
+            name: r.get(0),
+            owner: r.get(1),
+            encoding: r.get(2),
+        })
+        .collect())
 }
 
 pub async fn list_schemas(conn: &PgConn) -> Result<Vec<SchemaInfo>, DbError> {
-    let rows = conn.client()
+    let rows = conn
+        .client()
         .query(SQL_LIST_SCHEMAS, &[])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_SCHEMAS.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| SchemaInfo {
-        name: r.get(0),
-        owner: r.get(1),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_SCHEMAS.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| SchemaInfo {
+            name: r.get(0),
+            owner: r.get(1),
+        })
+        .collect())
 }
 
 pub async fn list_tables(conn: &PgConn, schema: &str) -> Result<Vec<TableInfo>, DbError> {
-    let rows = conn.client()
+    let rows = conn
+        .client()
         .query(SQL_LIST_TABLES, &[&schema])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_TABLES.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| TableInfo {
-        schema: r.get(0),
-        name: r.get(1),
-        estimated_rows: r.get(2),
-        total_bytes: r.get(3),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_TABLES.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| TableInfo {
+            schema: r.get(0),
+            name: r.get(1),
+            estimated_rows: r.get(2),
+            total_bytes: r.get(3),
+        })
+        .collect())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,7 +128,7 @@ pub struct IndexInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstraintInfo {
     pub name: String,
-    pub kind: String,        // 'PRIMARY KEY' | 'FOREIGN KEY' | 'UNIQUE' | 'CHECK'
+    pub kind: String, // 'PRIMARY KEY' | 'FOREIGN KEY' | 'UNIQUE' | 'CHECK'
     pub definition: String,
 }
 
@@ -177,50 +198,87 @@ const SQL_TABLE_SIZE: &str = "
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = $1 AND c.relname = $2";
 
-pub async fn list_columns(conn: &PgConn, schema: &str, table: &str) -> Result<Vec<ColumnInfo>, DbError> {
-    let rows = conn.client()
+pub async fn list_columns(
+    conn: &PgConn,
+    schema: &str,
+    table: &str,
+) -> Result<Vec<ColumnInfo>, DbError> {
+    let rows = conn
+        .client()
         .query(SQL_LIST_COLUMNS, &[&schema, &table])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_COLUMNS.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| ColumnInfo {
-        name: r.get(0),
-        data_type: r.get(1),
-        nullable: r.get(2),
-        default: r.get(3),
-        comment: r.get(4),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_COLUMNS.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| ColumnInfo {
+            name: r.get(0),
+            data_type: r.get(1),
+            nullable: r.get(2),
+            default: r.get(3),
+            comment: r.get(4),
+        })
+        .collect())
 }
 
-pub async fn list_indexes(conn: &PgConn, schema: &str, table: &str) -> Result<Vec<IndexInfo>, DbError> {
-    let rows = conn.client()
+pub async fn list_indexes(
+    conn: &PgConn,
+    schema: &str,
+    table: &str,
+) -> Result<Vec<IndexInfo>, DbError> {
+    let rows = conn
+        .client()
         .query(SQL_LIST_INDEXES, &[&schema, &table])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_INDEXES.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| IndexInfo {
-        name: r.get(0),
-        definition: r.get(1),
-        size_bytes: r.get(2),
-        scans: r.get(3),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_INDEXES.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| IndexInfo {
+            name: r.get(0),
+            definition: r.get(1),
+            size_bytes: r.get(2),
+            scans: r.get(3),
+        })
+        .collect())
 }
 
-pub async fn list_constraints(conn: &PgConn, schema: &str, table: &str) -> Result<Vec<ConstraintInfo>, DbError> {
-    let rows = conn.client()
+pub async fn list_constraints(
+    conn: &PgConn,
+    schema: &str,
+    table: &str,
+) -> Result<Vec<ConstraintInfo>, DbError> {
+    let rows = conn
+        .client()
         .query(SQL_LIST_CONSTRAINTS, &[&schema, &table])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_LIST_CONSTRAINTS.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| ConstraintInfo {
-        name: r.get(0),
-        kind: r.get(1),
-        definition: r.get(2),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_LIST_CONSTRAINTS.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| ConstraintInfo {
+            name: r.get(0),
+            kind: r.get(1),
+            definition: r.get(2),
+        })
+        .collect())
 }
 
 pub async fn table_size(conn: &PgConn, schema: &str, table: &str) -> Result<TableSize, DbError> {
-    let row = conn.client()
+    let row = conn
+        .client()
         .query_one(SQL_TABLE_SIZE, &[&schema, &table])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_TABLE_SIZE.into(), source: Box::new(e) })?;
+        .map_err(|e| DbError::Query {
+            sql: SQL_TABLE_SIZE.into(),
+            source: Box::new(e),
+        })?;
     Ok(TableSize {
         total_bytes: row.get(0),
         heap_bytes: row.get(1),
@@ -245,13 +303,24 @@ pub struct PkColumn {
     pub data_type: String,
 }
 
-pub async fn primary_key(conn: &PgConn, schema: &str, table: &str) -> Result<Vec<PkColumn>, DbError> {
-    let rows = conn.client()
+pub async fn primary_key(
+    conn: &PgConn,
+    schema: &str,
+    table: &str,
+) -> Result<Vec<PkColumn>, DbError> {
+    let rows = conn
+        .client()
         .query(SQL_PK, &[&schema, &table])
         .await
-        .map_err(|e| DbError::Query { sql: SQL_PK.into(), source: Box::new(e) })?;
-    Ok(rows.into_iter().map(|r| PkColumn {
-        name: r.get(0),
-        data_type: r.get(1),
-    }).collect())
+        .map_err(|e| DbError::Query {
+            sql: SQL_PK.into(),
+            source: Box::new(e),
+        })?;
+    Ok(rows
+        .into_iter()
+        .map(|r| PkColumn {
+            name: r.get(0),
+            data_type: r.get(1),
+        })
+        .collect())
 }

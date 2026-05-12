@@ -6,7 +6,9 @@ use postui::db::activity::{self, ActivityFilter};
 #[ignore = "requires docker"]
 async fn activity_returns_at_least_self_when_filter_is_all() {
     let db = common::start().await;
-    let rows = activity::activity(&db.conn, ActivityFilter::All).await.unwrap();
+    let rows = activity::activity(&db.conn, ActivityFilter::All)
+        .await
+        .unwrap();
     // Self is excluded; there might be 0 other rows on a fresh container.
     let _ = rows;
 }

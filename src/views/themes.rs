@@ -2,14 +2,14 @@
 
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Modifier, Style},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Padding},
-    Frame,
 };
 
 use crate::{
-    keys::{vim_motion, Motion},
+    keys::{Motion, vim_motion},
     ui::theme::{self, Theme},
     views::{AppEvent, Ctx, Modal, ModalOutcome},
 };

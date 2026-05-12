@@ -10,7 +10,10 @@ use crate::{
         catalog::PkColumn,
         mutate::{ColumnEdit, LiteralValue, PrimaryKey, build_insert, build_update},
     },
-    ui::{detail::{DetailView, Mode}, theme::Theme},
+    ui::{
+        detail::{DetailView, Mode},
+        theme::Theme,
+    },
     views::{AppEvent, Ctx, Outcome, View, ViewId, confirm::ConfirmView},
 };
 
@@ -32,19 +35,36 @@ impl RowDetailView {
         pk: Vec<PkColumn>,
         detail: DetailView,
     ) -> Self {
-        Self { id: ViewId::next(), detail, conn, schema, table, pk, insert_mode: false }
+        Self {
+            id: ViewId::next(),
+            detail,
+            conn,
+            schema,
+            table,
+            pk,
+            insert_mode: false,
+        }
     }
 
-    pub fn set_insert_mode(&mut self) { self.insert_mode = true; }
+    pub fn set_insert_mode(&mut self) {
+        self.insert_mode = true;
+    }
 
     fn current_pk(&self) -> PrimaryKey {
-        let cols = self.pk.iter().map(|c| {
-            let val = self.detail.fields.iter()
-                .find(|f| f.name == c.name)
-                .map(|f| LiteralValue::Text(f.original.clone()))
-                .unwrap_or(LiteralValue::Null);
-            (c.name.clone(), val)
-        }).collect();
+        let cols = self
+            .pk
+            .iter()
+            .map(|c| {
+                let val = self
+                    .detail
+                    .fields
+                    .iter()
+                    .find(|f| f.name == c.name)
+                    .map(|f| LiteralValue::Text(f.original.clone()))
+                    .unwrap_or(LiteralValue::Null);
+                (c.name.clone(), val)
+            })
+            .collect();
         PrimaryKey { columns: cols }
     }
 
@@ -53,7 +73,10 @@ impl RowDetailView {
         let tx = ctx.event_tx.clone();
 
         let sql = if self.insert_mode {
-            let edits: Vec<ColumnEdit> = self.detail.fields.iter()
+            let edits: Vec<ColumnEdit> = self
+                .detail
+                .fields
+                .iter()
                 .filter(|f| !f.edited.is_empty())
                 .map(|f| ColumnEdit {
                     name: f.name.clone(),
@@ -69,10 +92,13 @@ impl RowDetailView {
             if dirty.is_empty() {
                 return Outcome::Consumed;
             }
-            let edits: Vec<ColumnEdit> = dirty.iter().map(|f| ColumnEdit {
-                name: f.name.clone(),
-                value: LiteralValue::Text(f.edited.clone()),
-            }).collect();
+            let edits: Vec<ColumnEdit> = dirty
+                .iter()
+                .map(|f| ColumnEdit {
+                    name: f.name.clone(),
+                    value: LiteralValue::Text(f.edited.clone()),
+                })
+                .collect();
             let pk = self.current_pk();
             match build_update(&self.schema, &self.table, &edits, &pk) {
                 Ok(s) => s,
@@ -80,32 +106,36 @@ impl RowDetailView {
             }
         };
 
-        let title = if self.insert_mode { "execute INSERT" } else { "execute UPDATE" };
-        let body = if self.insert_mode { "insert this new row?" } else { "this will execute the SQL below." };
+        let title = if self.insert_mode {
+            "execute INSERT"
+        } else {
+            "execute UPDATE"
+        };
+        let body = if self.insert_mode {
+            "insert this new row?"
+        } else {
+            "this will execute the SQL below."
+        };
 
         let sql_for_action = sql.clone();
-        let confirm = ConfirmView::new(
-            title,
-            body,
-            sql,
-            move || {
-                let conn = conn.clone();
-                let tx = tx.clone();
-                let sql = sql_for_action.clone();
-                async move {
-                    let r = conn.client().execute(sql.as_str(), &[]).await;
-                    let toast = match &r {
-                        Ok(n) => format!("OK ({n} row(s))"),
-                        Err(e) => format!("failed: {e}"),
-                    };
-                    let _ = tx.send(AppEvent::Toast(toast)).await;
-                    r.map(|n| format!("{n}")).map_err(|e| crate::error::DbError::Query {
+        let confirm = ConfirmView::new(title, body, sql, move || {
+            let conn = conn.clone();
+            let tx = tx.clone();
+            let sql = sql_for_action.clone();
+            async move {
+                let r = conn.client().execute(sql.as_str(), &[]).await;
+                let toast = match &r {
+                    Ok(n) => format!("OK ({n} row(s))"),
+                    Err(e) => format!("failed: {e}"),
+                };
+                let _ = tx.send(AppEvent::Toast(toast)).await;
+                r.map(|n| format!("{n}"))
+                    .map_err(|e| crate::error::DbError::Query {
                         sql: sql.clone(),
                         source: Box::new(e),
                     })
-                }
-            },
-        );
+            }
+        });
         Outcome::Push(Box::new(confirm))
     }
 
@@ -134,10 +164,11 @@ impl RowDetailView {
                         Err(e) => format!("DELETE failed: {e}"),
                     };
                     let _ = tx.send(AppEvent::Toast(toast)).await;
-                    r.map(|n| format!("{n}")).map_err(|e| crate::error::DbError::Query {
-                        sql: sql.clone(),
-                        source: Box::new(e),
-                    })
+                    r.map(|n| format!("{n}"))
+                        .map_err(|e| crate::error::DbError::Query {
+                            sql: sql.clone(),
+                            source: Box::new(e),
+                        })
                 }
             },
         );
@@ -147,14 +178,26 @@ impl RowDetailView {
 
 /// Tiny "view" that just toasts and pops on first key. Used for inline error surfaces.
 fn toast_view(msg: String) -> ToastOnce {
-    ToastOnce { id: ViewId::next(), msg, shown: false }
+    ToastOnce {
+        id: ViewId::next(),
+        msg,
+        shown: false,
+    }
 }
 
-struct ToastOnce { id: ViewId, msg: String, shown: bool }
+struct ToastOnce {
+    id: ViewId,
+    msg: String,
+    shown: bool,
+}
 
 impl View for ToastOnce {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "info" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "info"
+    }
     fn render(&mut self, _f: &mut Frame, _area: Rect, _t: &Theme) {}
     fn handle_key(&mut self, _key: KeyEvent, ctx: &mut Ctx) -> Outcome {
         if !self.shown {
@@ -166,8 +209,12 @@ impl View for ToastOnce {
 }
 
 impl View for RowDetailView {
-    fn id(&self) -> ViewId { self.id }
-    fn title(&self) -> &str { "row" }
+    fn id(&self) -> ViewId {
+        self.id
+    }
+    fn title(&self) -> &str {
+        "row"
+    }
 
     fn render(&mut self, f: &mut Frame, area: Rect, theme: &Theme) {
         self.detail.render(f, area, theme);
@@ -176,12 +223,21 @@ impl View for RowDetailView {
     fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> Outcome {
         match self.detail.mode {
             Mode::View => match key.code {
-                KeyCode::Char('j') | KeyCode::Down => { self.detail.move_down(); Outcome::Consumed }
-                KeyCode::Char('k') | KeyCode::Up => { self.detail.move_up(); Outcome::Consumed }
-                KeyCode::Char('i') => { self.detail.enter_edit(); Outcome::Consumed }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.detail.move_down();
+                    Outcome::Consumed
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.detail.move_up();
+                    Outcome::Consumed
+                }
+                KeyCode::Char('i') => {
+                    self.detail.enter_edit();
+                    Outcome::Consumed
+                }
                 KeyCode::Char('d') => self.delete(ctx),
                 _ => Outcome::Pass,
-            }
+            },
             Mode::Edit => match key.code {
                 KeyCode::Esc => {
                     // Cancel: revert all in-progress edits to originals.
@@ -195,15 +251,28 @@ impl View for RowDetailView {
                     self.detail.leave_edit();
                     self.submit(ctx)
                 }
-                KeyCode::Tab | KeyCode::Down => { self.detail.move_down(); Outcome::Consumed }
-                KeyCode::BackTab | KeyCode::Up => { self.detail.move_up(); Outcome::Consumed }
-                KeyCode::Backspace => { self.detail.backspace(); Outcome::Consumed }
-                KeyCode::Char(c) => { self.detail.append_char(c); Outcome::Consumed }
+                KeyCode::Tab | KeyCode::Down => {
+                    self.detail.move_down();
+                    Outcome::Consumed
+                }
+                KeyCode::BackTab | KeyCode::Up => {
+                    self.detail.move_up();
+                    Outcome::Consumed
+                }
+                KeyCode::Backspace => {
+                    self.detail.backspace();
+                    Outcome::Consumed
+                }
+                KeyCode::Char(c) => {
+                    self.detail.append_char(c);
+                    Outcome::Consumed
+                }
                 _ => Outcome::Consumed,
-            }
+            },
         }
     }
 
-    fn as_any(&self) -> Option<&dyn std::any::Any> { Some(self) }
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
 }
-

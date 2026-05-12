@@ -9,18 +9,16 @@ pub enum Motion {
     Down,
     Left,
     Right,
-    PageUp,    // w / PageUp / Ctrl-D — but we use w for forward, b for back
+    PageUp, // w / PageUp / Ctrl-D — but we use w for forward, b for back
     PageDown,
-    Home,      // gg
-    End,       // e (jump to last row, per spec)
-    PageNext,  // PageDown
-    PagePrev,  // PageUp
+    Home,     // gg
+    End,      // e (jump to last row, per spec)
+    PageNext, // PageDown
+    PagePrev, // PageUp
 }
 
 pub fn vim_motion(key: KeyEvent) -> Option<Motion> {
-    if key.modifiers.contains(KeyModifiers::CONTROL)
-        || key.modifiers.contains(KeyModifiers::ALT)
-    {
+    if key.modifiers.contains(KeyModifiers::CONTROL) || key.modifiers.contains(KeyModifiers::ALT) {
         return None;
     }
     Some(match key.code {

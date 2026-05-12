@@ -6,14 +6,19 @@ use postui::db::rows;
 #[ignore = "requires docker"]
 async fn fetch_page_returns_first_100() {
     let db = common::start().await;
-    db.conn.client().execute(
-        "CREATE TABLE public.r (id int, name text)",
-        &[],
-    ).await.unwrap();
-    db.conn.client().execute(
-        "INSERT INTO public.r SELECT g, 'name-'||g FROM generate_series(1, 250) g",
-        &[],
-    ).await.unwrap();
+    db.conn
+        .client()
+        .execute("CREATE TABLE public.r (id int, name text)", &[])
+        .await
+        .unwrap();
+    db.conn
+        .client()
+        .execute(
+            "INSERT INTO public.r SELECT g, 'name-'||g FROM generate_series(1, 250) g",
+            &[],
+        )
+        .await
+        .unwrap();
 
     let page = rows::fetch_page(&db.conn, "public", "r", 0).await.unwrap();
     assert_eq!(page.rows.len(), 100);
@@ -27,16 +32,23 @@ async fn fetch_page_returns_first_100() {
 #[ignore = "requires docker"]
 async fn fetch_page_with_offset() {
     let db = common::start().await;
-    db.conn.client().execute(
-        "CREATE TABLE public.r (id int)",
-        &[],
-    ).await.unwrap();
-    db.conn.client().execute(
-        "INSERT INTO public.r SELECT g FROM generate_series(1, 250) g",
-        &[],
-    ).await.unwrap();
+    db.conn
+        .client()
+        .execute("CREATE TABLE public.r (id int)", &[])
+        .await
+        .unwrap();
+    db.conn
+        .client()
+        .execute(
+            "INSERT INTO public.r SELECT g FROM generate_series(1, 250) g",
+            &[],
+        )
+        .await
+        .unwrap();
 
-    let page = rows::fetch_page(&db.conn, "public", "r", 100).await.unwrap();
+    let page = rows::fetch_page(&db.conn, "public", "r", 100)
+        .await
+        .unwrap();
     assert_eq!(page.rows.len(), 100);
     assert_eq!(page.rows[0][0], "101");
 }
@@ -45,8 +57,10 @@ async fn fetch_page_with_offset() {
 #[ignore = "requires docker"]
 async fn type_conversions_round_trip() {
     let db = common::start().await;
-    db.conn.client().execute(
-        "CREATE TABLE public.t (
+    db.conn
+        .client()
+        .execute(
+            "CREATE TABLE public.t (
             i  int,
             t  text,
             b  bool,
@@ -56,18 +70,24 @@ async fn type_conversions_round_trip() {
             n  numeric,
             ba bytea
         )",
-        &[],
-    ).await.unwrap();
-    db.conn.client().execute(
-        "INSERT INTO public.t VALUES (
+            &[],
+        )
+        .await
+        .unwrap();
+    db.conn
+        .client()
+        .execute(
+            "INSERT INTO public.t VALUES (
             1, 'hi', true, '2024-01-01T12:00:00Z',
             '{\"k\":1}'::jsonb,
             '11111111-2222-3333-4444-555555555555'::uuid,
             12.34,
             '\\x010203'::bytea
         )",
-        &[],
-    ).await.unwrap();
+            &[],
+        )
+        .await
+        .unwrap();
 
     let page = rows::fetch_page(&db.conn, "public", "t", 0).await.unwrap();
     assert_eq!(page.rows.len(), 1);
