@@ -1,14 +1,18 @@
 use ratatui::{
-    Frame,
     layout::Rect,
     style::Style,
     widgets::{Block, Borders, Paragraph},
+    Frame,
 };
 
 use super::theme::Theme;
 
 pub fn render(f: &mut Frame, area: Rect, theme: &Theme, title: &str, breadcrumb: &str) {
-    let text = format!("{title:<24} {breadcrumb}");
+    let text = if breadcrumb.is_empty() {
+        format!("{title:<24}")
+    } else {
+        format!("{title:<24} > {breadcrumb}")
+    };
     let p = Paragraph::new(text)
         .block(
             Block::default()
