@@ -183,6 +183,36 @@ impl Palette {
         }
     }
 
+    pub fn move_up(&mut self) {
+        if self.filtered.is_empty() {
+            return;
+        }
+        if self.selected == 0 {
+            self.selected = self.filtered.len() - 1;
+        } else {
+            self.selected -= 1;
+        }
+    }
+
+    pub fn move_down(&mut self) {
+        if self.filtered.is_empty() {
+            return;
+        }
+        if self.selected >= self.filtered.len() - 1 {
+            self.selected = 0;
+        } else {
+            self.selected += 1;
+        }
+    }
+
+    pub fn select_item(&mut self) {
+        if let Some(&idx) = self.filtered.get(self.selected) {
+            self.buffer = COMMANDS[idx].name.to_string();
+            self.suggestion = suggest(&self.buffer);
+            self.rebuild_filtered();
+        }
+    }
+
     fn rebuild_filtered(&mut self) {
         let head = match self.buffer.split_once(' ') {
             Some((h, _)) => h,
@@ -414,5 +444,65 @@ mod tests {
         let names: Vec<&str> = p.filtered.iter().map(|&i| COMMANDS[i].name).collect();
         assert!(names.contains(&"terminate"));
         assert_eq!(names.len(), 1);
+    }
+
+    #[test]
+    fn move_down_advances_selected() {
+        let mut p = Palette::default();
+        p.open();
+        assert_eq!(p.selected, 0);
+        p.move_down();
+        assert_eq!(p.selected, 1);
+    }
+
+    #[test]
+    fn move_up_wraps_to_last() {
+        let mut p = Palette::default();
+        p.open();
+        assert_eq!(p.selected, 0);
+        p.move_up();
+        assert_eq!(p.selected, COMMANDS.len() - 1);
+    }
+
+    #[test]
+    fn move_down_wraps_to_zero() {
+        let mut p = Palette::default();
+        p.open();
+        p.selected = COMMANDS.len() - 1;
+        p.move_down();
+        assert_eq!(p.selected, 0);
+    }
+
+    #[test]
+    fn move_does_nothing_on_empty_filtered() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('z');
+        assert!(p.filtered.is_empty());
+        p.move_up();
+        p.move_down();
+        assert_eq!(p.selected, 0);
+    }
+
+    #[test]
+    fn select_item_fills_buffer() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('t');
+        p.push('e');
+        let names: Vec<&str> = p.filtered.iter().map(|&i| COMMANDS[i].name).collect();
+        let first_name = names[0];
+        p.select_item();
+        assert_eq!(p.buffer, first_name);
+    }
+
+    #[test]
+    fn select_item_noop_on_empty_filtered() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('z');
+        assert!(p.filtered.is_empty());
+        p.select_item();
+        assert_eq!(p.buffer, "z");
     }
 }
