@@ -60,6 +60,7 @@ impl DetailView {
     pub fn enter_edit(&mut self) {
         self.mode = Mode::Edit;
     }
+
     pub fn leave_edit(&mut self) {
         self.mode = Mode::View;
     }
@@ -104,7 +105,7 @@ impl DetailView {
             .fields
             .iter()
             .map(|fld| {
-                let val = if mode == Mode::Edit && fld.edited != fld.original {
+                let val = if mode == Mode::Edit && !fld.is_pk {
                     format!("{}  →  {}", fld.original, fld.edited)
                 } else {
                     fld.edited.clone()
@@ -120,8 +121,8 @@ impl DetailView {
 
         let widths = vec![Constraint::Percentage(30), Constraint::Percentage(70)];
         let title = match self.mode {
-            Mode::View => " row ",
-            Mode::Edit => " row [EDIT — Enter saves, Esc cancels] ",
+            Mode::View => " row detail [VIEW] ",
+            Mode::Edit => " row detail [EDIT — up/down moves, Enter saves, Esc cancels] ",
         };
         let table = RTable::new(body, widths)
             .header(header)
