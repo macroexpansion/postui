@@ -126,11 +126,25 @@ pub fn suggest(buffer: &str) -> Option<String> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Palette {
     pub open: bool,
     pub buffer: String,
     pub suggestion: Option<String>,
+    pub filtered: Vec<usize>,
+    pub selected: usize,
+}
+
+impl Default for Palette {
+    fn default() -> Self {
+        Self {
+            open: false,
+            buffer: String::new(),
+            suggestion: None,
+            filtered: Vec::new(),
+            selected: 0,
+        }
+    }
 }
 
 impl Palette {
@@ -138,29 +152,53 @@ impl Palette {
         self.open = true;
         self.buffer.clear();
         self.suggestion = None;
+        self.rebuild_filtered();
     }
 
     pub fn close(&mut self) {
         self.open = false;
         self.buffer.clear();
         self.suggestion = None;
+        self.filtered.clear();
+        self.selected = 0;
     }
 
     pub fn push(&mut self, c: char) {
         self.buffer.push(c);
         self.suggestion = suggest(&self.buffer);
+        self.rebuild_filtered();
     }
 
     pub fn backspace(&mut self) {
         self.buffer.pop();
         self.suggestion = suggest(&self.buffer);
+        self.rebuild_filtered();
     }
 
     pub fn accept_suggestion(&mut self) {
         if let Some(suffix) = self.suggestion.take() {
             self.buffer.push_str(&suffix);
             self.suggestion = suggest(&self.buffer);
+            self.rebuild_filtered();
         }
+    }
+
+    fn rebuild_filtered(&mut self) {
+        let head = match self.buffer.split_once(' ') {
+            Some((h, _)) => h,
+            None => &self.buffer,
+        };
+        if head.is_empty() {
+            self.filtered = (0..COMMANDS.len()).collect();
+        } else {
+            self.filtered = COMMANDS
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.name.starts_with(head))
+                .map(|(i, _)| i)
+                .collect();
+        }
+        self.selected = 0;
     }
 }
 
@@ -315,5 +353,66 @@ mod tests {
     #[test]
     fn suggest_theme_uses_alias_too() {
         assert_eq!(suggest("theme gruv"), Some("box-dark".to_string()));
+    }
+
+    #[test]
+    fn open_populates_all_commands() {
+        let mut p = Palette::default();
+        p.open();
+        assert_eq!(p.filtered.len(), COMMANDS.len());
+        assert_eq!(p.selected, 0);
+    }
+
+    #[test]
+    fn push_filters_by_prefix() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('s');
+        let names: Vec<&str> = p.filtered.iter().map(|&i| COMMANDS[i].name).collect();
+        assert!(names.contains(&"schemas"));
+        assert!(names.contains(&"sessions"));
+        assert!(!names.contains(&"tables"));
+        assert_eq!(p.selected, 0);
+    }
+
+    #[test]
+    fn push_then_backspace_restores_all() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('s');
+        assert!(p.filtered.len() < COMMANDS.len());
+        p.backspace();
+        assert_eq!(p.filtered.len(), COMMANDS.len());
+    }
+
+    #[test]
+    fn no_match_gives_empty_filtered() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('z');
+        assert!(p.filtered.is_empty());
+        assert_eq!(p.selected, 0);
+    }
+
+    #[test]
+    fn space_in_buffer_still_computes_filtered() {
+        let mut p = Palette::default();
+        p.open();
+        for c in "theme ".chars() {
+            p.push(c);
+        }
+        let names: Vec<&str> = p.filtered.iter().map(|&i| COMMANDS[i].name).collect();
+        assert_eq!(names, vec!["themes", "theme"]);
+    }
+
+    #[test]
+    fn prefix_te_matches_terminate() {
+        let mut p = Palette::default();
+        p.open();
+        p.push('t');
+        p.push('e');
+        let names: Vec<&str> = p.filtered.iter().map(|&i| COMMANDS[i].name).collect();
+        assert!(names.contains(&"terminate"));
+        assert_eq!(names.len(), 1);
     }
 }
