@@ -185,14 +185,6 @@ impl Palette {
         self.rebuild_filtered();
     }
 
-    pub fn accept_suggestion(&mut self) {
-        if let Some(suffix) = self.suggestion.take() {
-            self.buffer.push_str(&suffix);
-            self.suggestion = suggest(&self.buffer);
-            self.rebuild_filtered();
-        }
-    }
-
     pub fn move_up(&mut self) {
         if self.filtered.is_empty() {
             return;
@@ -582,5 +574,28 @@ mod tests {
         assert!(p.filtered.is_empty());
         p.select_item();
         assert_eq!(p.buffer, "z");
+    }
+
+    #[test]
+    fn full_dropdown_workflow() {
+        let mut p = Palette::default();
+        p.open();
+        assert!(p.filtered.len() > 1);
+
+        p.push('t');
+        assert!(p.filtered.len() < COMMANDS.len());
+        let selected_name = COMMANDS[p.filtered[p.selected]].name.to_string();
+
+        p.move_down();
+        let next_name = COMMANDS[p.filtered[p.selected]].name.to_string();
+        assert_ne!(selected_name, next_name);
+
+        p.select_item();
+        assert_eq!(p.buffer, next_name);
+
+        p.close();
+        assert!(!p.open);
+        assert!(p.buffer.is_empty());
+        assert!(p.filtered.is_empty());
     }
 }
