@@ -5,7 +5,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState},
+    widgets::{Block, Clear, List, ListItem, ListState},
 };
 
 use super::theme::Theme;
@@ -194,6 +194,7 @@ impl Palette {
         } else {
             self.selected -= 1;
         }
+        self.sync_buffer_to_selection();
     }
 
     pub fn move_down(&mut self) {
@@ -205,6 +206,7 @@ impl Palette {
         } else {
             self.selected += 1;
         }
+        self.sync_buffer_to_selection();
     }
 
     pub fn select_item(&mut self) {
@@ -212,6 +214,13 @@ impl Palette {
             self.buffer = COMMANDS[idx].name.to_string();
             self.suggestion = suggest(&self.buffer);
             self.rebuild_filtered();
+        }
+    }
+
+    fn sync_buffer_to_selection(&mut self) {
+        if let Some(&idx) = self.filtered.get(self.selected) {
+            self.buffer = COMMANDS[idx].name.to_string();
+            self.suggestion = suggest(&self.buffer);
         }
     }
 
@@ -254,21 +263,20 @@ pub fn render_dropdown(f: &mut Frame, area: Rect, theme: &Theme, palette: &Palet
         .max()
         .unwrap_or(0);
 
-    let width = (max_item_width as u16 + 8).min(50).min(area.width.saturating_sub(1));
+    let width = (max_item_width as u16 + 8)
+        .min(50)
+        .min(area.width.saturating_sub(1));
     let visible = (palette.filtered.len() as u16).min(12);
-    let height = (visible + 2).min(area.height);
+    let height = visible.min(area.height);
     let y = area.bottom().saturating_sub(height);
-    let x = area.x + 1;
+    let x = area.x;
     let rect = Rect::new(x, y, width, height);
 
     f.render_widget(Clear, rect);
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" commands ")
-        .border_style(Style::default().fg(theme.border));
-    let inner = block.inner(rect);
-    f.render_widget(block, rect);
+    let bg = Block::default().style(Style::default().bg(theme.bg));
+    let inner = bg.inner(rect);
+    f.render_widget(bg, rect);
 
     let items: Vec<ListItem> = palette
         .filtered
@@ -276,7 +284,10 @@ pub fn render_dropdown(f: &mut Frame, area: Rect, theme: &Theme, palette: &Palet
         .map(|&i| {
             let cmd = &COMMANDS[i];
             if cmd.aliases.is_empty() {
-                ListItem::new(Span::styled(cmd.name.to_string(), Style::default().fg(theme.fg)))
+                ListItem::new(Span::styled(
+                    cmd.name.to_string(),
+                    Style::default().fg(theme.fg),
+                ))
             } else {
                 ListItem::new(Line::from(vec![
                     Span::styled(cmd.name.to_string(), Style::default().fg(theme.fg)),
@@ -297,7 +308,7 @@ pub fn render_dropdown(f: &mut Frame, area: Rect, theme: &Theme, palette: &Palet
             .bg(theme.selection_bg)
             .fg(theme.selection_fg)
             .add_modifier(Modifier::BOLD),
-    ).highlight_symbol("▶ ");
+    );
 
     f.render_stateful_widget(list, inner, &mut state);
 }
@@ -517,21 +528,25 @@ mod tests {
     }
 
     #[test]
-    fn move_down_advances_selected() {
+    fn move_down_advances_selected_and_fills_buffer() {
         let mut p = Palette::default();
         p.open();
         assert_eq!(p.selected, 0);
+        let first = COMMANDS[p.filtered[0]].name.to_string();
         p.move_down();
         assert_eq!(p.selected, 1);
+        assert_eq!(p.buffer, COMMANDS[p.filtered[1]].name);
+        assert_ne!(p.buffer, first);
     }
 
     #[test]
-    fn move_up_wraps_to_last() {
+    fn move_up_wraps_to_last_and_fills_buffer() {
         let mut p = Palette::default();
         p.open();
         assert_eq!(p.selected, 0);
         p.move_up();
         assert_eq!(p.selected, COMMANDS.len() - 1);
+        assert_eq!(p.buffer, COMMANDS[p.filtered[COMMANDS.len() - 1]].name);
     }
 
     #[test]
