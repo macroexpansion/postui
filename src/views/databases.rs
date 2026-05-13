@@ -8,7 +8,7 @@ use crate::{
         PgConn,
         catalog::{DatabaseInfo, list_databases},
     },
-    keys::vim_motion,
+    keys::Keymap,
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
 };
@@ -19,6 +19,7 @@ pub struct DatabasesView {
     rows: Vec<DatabaseInfo>,
     error: Option<String>,
     conn: PgConn,
+    keymap: Keymap,
 }
 
 impl DatabasesView {
@@ -31,6 +32,7 @@ impl DatabasesView {
             rows: vec![],
             error: None,
             conn,
+            keymap: Keymap::new(),
         }
     }
 
@@ -53,12 +55,15 @@ impl View for DatabasesView {
     }
 
     fn handle_key(&mut self, key: KeyEvent, _ctx: &mut Ctx) -> Outcome {
-        if let Some(m) = vim_motion(key) {
+        if let Some(m) = self.keymap.handle(key) {
             self.table.move_motion(m);
             return Outcome::Consumed;
         }
+        if self.keymap.is_pending() {
+            return Outcome::Consumed;
+        }
         match key.code {
-            KeyCode::Enter => Outcome::Pass, // App will rebuild conn to selected db (Task 3.6)
+            KeyCode::Enter => Outcome::Pass,
             _ => Outcome::Pass,
         }
     }

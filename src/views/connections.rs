@@ -5,7 +5,7 @@ use ratatui::{Frame, layout::Rect};
 
 use crate::{
     config::Config,
-    keys::vim_motion,
+    keys::Keymap,
     ui::{table::DataTable, theme::Theme},
     views::{Ctx, Outcome, View, ViewId, ViewPayload},
 };
@@ -13,8 +13,8 @@ use crate::{
 pub struct ConnectionsView {
     id: ViewId,
     table: DataTable,
-    /// Names in row order so we can resolve the selection.
     names: Vec<String>,
+    keymap: Keymap,
 }
 
 impl ConnectionsView {
@@ -29,6 +29,7 @@ impl ConnectionsView {
                 } else {
                     ""
                 };
+
                 vec![
                     active_mark.into(),
                     c.name.clone(),
@@ -45,6 +46,7 @@ impl ConnectionsView {
             id: ViewId::next(),
             table,
             names: config.connections.iter().map(|c| c.name.clone()).collect(),
+            keymap: Keymap::new(),
         }
     }
 
@@ -76,12 +78,14 @@ impl View for ConnectionsView {
     }
 
     fn handle_key(&mut self, key: KeyEvent, _ctx: &mut Ctx) -> Outcome {
-        if let Some(m) = vim_motion(key) {
+        if let Some(m) = self.keymap.handle(key) {
             self.table.move_motion(m);
             return Outcome::Consumed;
         }
+        if self.keymap.is_pending() {
+            return Outcome::Consumed;
+        }
         match key.code {
-            // Connect/switch is wired by App in a later task — for now, just emit Pass.
             KeyCode::Enter => Outcome::Pass,
             _ => Outcome::Pass,
         }

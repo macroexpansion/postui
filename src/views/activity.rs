@@ -12,7 +12,7 @@ use crate::{
         PgConn,
         activity::{ActivityFilter, ActivityRow, LockRow, activity, cancel_backend, locks},
     },
-    keys::vim_motion,
+    keys::Keymap,
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
 };
@@ -33,6 +33,7 @@ pub struct ActivityView {
     poll_token: Option<CancellationToken>,
     conn: PgConn,
     tick_ms: u64,
+    keymap: Keymap,
 }
 
 impl ActivityView {
@@ -54,6 +55,7 @@ impl ActivityView {
             poll_token: None,
             conn,
             tick_ms,
+            keymap: Keymap::new(),
         }
     }
 
@@ -87,8 +89,11 @@ impl View for ActivityView {
     }
 
     fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> Outcome {
-        if let Some(m) = vim_motion(key) {
+        if let Some(m) = self.keymap.handle(key) {
             self.table.move_motion(m);
+            return Outcome::Consumed;
+        }
+        if self.keymap.is_pending() {
             return Outcome::Consumed;
         }
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('k') {

@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    keys::{Motion, vim_motion},
+    keys::{Keymap, Motion},
     ui::theme::{self, Theme},
     views::{AppEvent, Ctx, Modal, ModalOutcome},
 };
@@ -27,6 +27,7 @@ fn compact_modal_rect(width: u16, height: u16, area: Rect) -> Rect {
 pub struct ThemesModal {
     state: ListState,
     saved: &'static Theme,
+    keymap: Keymap,
 }
 
 impl ThemesModal {
@@ -40,6 +41,7 @@ impl ThemesModal {
         Self {
             state,
             saved: current,
+            keymap: Keymap::new(),
         }
     }
 
@@ -99,9 +101,12 @@ impl Modal for ThemesModal {
     }
 
     fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> ModalOutcome {
-        if let Some(m) = vim_motion(key) {
+        if let Some(m) = self.keymap.handle(key) {
             self.move_motion(m);
             self.preview(ctx);
+            return ModalOutcome::Consumed;
+        }
+        if self.keymap.is_pending() {
             return ModalOutcome::Consumed;
         }
         match key.code {

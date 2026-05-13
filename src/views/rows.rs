@@ -12,17 +12,13 @@ use crate::{
         PgConn,
         rows::{PAGE_SIZE, Page, fetch_page},
     },
-    keys::{Motion, vim_motion},
+    keys::{Keymap, Motion},
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload},
 };
 
 pub struct RowsView {
     id: ViewId,
-    /// View id to send `AppEvent::ViewData` under. When `RowsView` is embedded
-    /// inside another view (e.g. `TableInspectorView`), this must be the
-    /// *parent's* id, since the App dispatcher routes events to the top of the
-    /// view stack — not to embedded children.
     event_view_id: ViewId,
     table: DataTable,
     page: Option<Page>,
@@ -31,6 +27,7 @@ pub struct RowsView {
     schema: String,
     name: String,
     offset: i64,
+    keymap: Keymap,
 }
 
 impl RowsView {
@@ -45,6 +42,7 @@ impl RowsView {
             schema,
             name,
             offset: 0,
+            keymap: Keymap::new(),
         }
     }
 
@@ -104,6 +102,36 @@ impl RowsView {
                 .collect(),
         )
     }
+
+    pub fn handle_motion(&mut self, m: Motion, ctx: &mut Ctx) -> Outcome {
+        self.apply_motion(m, ctx)
+    }
+
+    fn apply_motion(&mut self, m: Motion, ctx: &mut Ctx) -> Outcome {
+        match m {
+            Motion::PageNext | Motion::PageDown => {
+                if let Some(p) = &self.page {
+                    if !p.rows.is_empty() && p.rows.len() == PAGE_SIZE as usize {
+                        self.offset += PAGE_SIZE;
+                        self.refetch(ctx);
+                        return Outcome::Consumed;
+                    }
+                }
+            }
+            Motion::PagePrev | Motion::PageUp => {
+                if self.offset > 0 {
+                    self.offset = (self.offset - PAGE_SIZE).max(0);
+                    self.refetch(ctx);
+                    return Outcome::Consumed;
+                }
+            }
+            _ => {
+                self.table.move_motion(m);
+                return Outcome::Consumed;
+            }
+        }
+        Outcome::Consumed
+    }
 }
 
 impl View for RowsView {
@@ -136,32 +164,14 @@ impl View for RowsView {
     }
 
     fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> Outcome {
-        if let Some(m) = vim_motion(key) {
-            match m {
-                Motion::PageNext | Motion::PageDown => {
-                    if let Some(p) = &self.page {
-                        if !p.rows.is_empty() && p.rows.len() == PAGE_SIZE as usize {
-                            self.offset += PAGE_SIZE;
-                            self.refetch(ctx);
-                            return Outcome::Consumed;
-                        }
-                    }
-                }
-                Motion::PagePrev | Motion::PageUp => {
-                    if self.offset > 0 {
-                        self.offset = (self.offset - PAGE_SIZE).max(0);
-                        self.refetch(ctx);
-                        return Outcome::Consumed;
-                    }
-                }
-                _ => {
-                    self.table.move_motion(m);
-                    return Outcome::Consumed;
-                }
-            }
+        if let Some(m) = self.keymap.handle(key) {
+            return self.apply_motion(m, ctx);
+        }
+        if self.keymap.is_pending() {
+            return Outcome::Consumed;
         }
         match key.code {
-            KeyCode::Enter => Outcome::Pass, // App opens detail view
+            KeyCode::Enter => Outcome::Pass,
             _ => Outcome::Pass,
         }
     }

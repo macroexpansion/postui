@@ -13,7 +13,7 @@ use crate::{
         PgConn,
         catalog::{TableSize, list_columns, list_constraints, list_indexes, table_size},
     },
-    keys::{Motion, vim_motion},
+    keys::{Keymap, Motion},
     ui::{table::DataTable, theme::Theme},
     views::{AppEvent, Ctx, Outcome, View, ViewId, ViewPayload, rows::RowsView},
 };
@@ -56,6 +56,7 @@ pub struct TableInspectorView {
     constraints: DataTable,
     size: Option<TableSize>,
     error: Option<String>,
+    keymap: Keymap,
 }
 
 impl TableInspectorView {
@@ -73,6 +74,7 @@ impl TableInspectorView {
             constraints: DataTable::new(vec!["name", "kind", "definition"]),
             size: None,
             error: None,
+            keymap: Keymap::new(),
         }
     }
 
@@ -197,7 +199,7 @@ impl View for TableInspectorView {
     }
 
     fn handle_key(&mut self, key: KeyEvent, ctx: &mut Ctx) -> Outcome {
-        if let Some(m) = vim_motion(key) {
+        if let Some(m) = self.keymap.handle(key) {
             match m {
                 Motion::Left => {
                     self.cycle_tab(-1, ctx);
@@ -207,18 +209,28 @@ impl View for TableInspectorView {
                     self.cycle_tab(1, ctx);
                     return Outcome::Consumed;
                 }
-                _ => {}
+                _ => match self.active {
+                    Tab::Rows => {
+                        self.rows.handle_motion(m, ctx);
+                    }
+                    Tab::Columns => self.columns.move_motion(m),
+                    Tab::Indexes => self.indexes.move_motion(m),
+                    Tab::Constraints => self.constraints.move_motion(m),
+                    Tab::Size => {}
+                },
             }
+            return Outcome::Consumed;
+        }
+        if self.keymap.is_pending() {
+            return Outcome::Consumed;
         }
         if self.active == Tab::Rows && key.code == KeyCode::Char('a') {
             return Outcome::Pass;
         }
         match self.active {
             Tab::Rows => self.rows.handle_key(key, ctx),
-            Tab::Columns => motion_only(&mut self.columns, key),
-            Tab::Indexes => motion_only(&mut self.indexes, key),
-            Tab::Constraints => motion_only(&mut self.constraints, key),
             Tab::Size => Outcome::Pass,
+            _ => Outcome::Pass,
         }
     }
 
@@ -300,14 +312,6 @@ impl View for TableInspectorView {
     fn as_any(&self) -> Option<&dyn std::any::Any> {
         Some(self)
     }
-}
-
-fn motion_only(t: &mut DataTable, key: KeyEvent) -> Outcome {
-    if let Some(m) = vim_motion(key) {
-        t.move_motion(m);
-        return Outcome::Consumed;
-    }
-    Outcome::Pass
 }
 
 fn render_size(
