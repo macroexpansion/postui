@@ -1,5 +1,15 @@
 //! ":command" palette state and parser.
 
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::{Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState},
+};
+
+use super::theme::Theme;
+
 #[derive(Debug, Clone, Copy)]
 enum ArgKind {
     None,
@@ -230,6 +240,74 @@ impl Palette {
         }
         self.selected = 0;
     }
+}
+
+pub fn render_dropdown(f: &mut Frame, area: Rect, theme: &Theme, palette: &Palette) {
+    if !palette.open || palette.buffer.contains(' ') || palette.filtered.is_empty() {
+        return;
+    }
+
+    let max_item_width: usize = palette
+        .filtered
+        .iter()
+        .map(|&i| {
+            let cmd = &COMMANDS[i];
+            if cmd.aliases.is_empty() {
+                cmd.name.len()
+            } else {
+                let aliases_str = cmd.aliases.join(", ");
+                cmd.name.len() + 3 + aliases_str.len()
+            }
+        })
+        .max()
+        .unwrap_or(0);
+
+    let width = (max_item_width as u16 + 8).min(50).min(area.width.saturating_sub(1));
+    let visible = (palette.filtered.len() as u16).min(12);
+    let height = (visible + 2).min(area.height);
+    let y = area.bottom().saturating_sub(height);
+    let x = area.x + 1;
+    let rect = Rect::new(x, y, width, height);
+
+    f.render_widget(Clear, rect);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" commands ")
+        .border_style(Style::default().fg(theme.border));
+    let inner = block.inner(rect);
+    f.render_widget(block, rect);
+
+    let items: Vec<ListItem> = palette
+        .filtered
+        .iter()
+        .map(|&i| {
+            let cmd = &COMMANDS[i];
+            if cmd.aliases.is_empty() {
+                ListItem::new(Span::styled(cmd.name.to_string(), Style::default().fg(theme.fg)))
+            } else {
+                ListItem::new(Line::from(vec![
+                    Span::styled(cmd.name.to_string(), Style::default().fg(theme.fg)),
+                    Span::styled(
+                        format!(" ({})", cmd.aliases.join(", ")),
+                        Style::default().fg(theme.muted),
+                    ),
+                ]))
+            }
+        })
+        .collect();
+
+    let mut state = ListState::default();
+    state.select(Some(palette.selected));
+
+    let list = List::new(items).highlight_style(
+        Style::default()
+            .bg(theme.selection_bg)
+            .fg(theme.selection_fg)
+            .add_modifier(Modifier::BOLD),
+    ).highlight_symbol("▶ ");
+
+    f.render_stateful_widget(list, inner, &mut state);
 }
 
 /// A parsed palette command.
