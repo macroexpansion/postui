@@ -416,6 +416,19 @@ impl App {
 
         // palette mode owns the keys until closed
         if self.palette.open {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                match key.code {
+                    KeyCode::Char('j') => {
+                        self.palette.move_down();
+                        return;
+                    }
+                    KeyCode::Char('k') => {
+                        self.palette.move_up();
+                        return;
+                    }
+                    _ => {}
+                }
+            }
             match key.code {
                 KeyCode::Esc => self.palette.close(),
                 KeyCode::Enter => {
@@ -424,7 +437,13 @@ impl App {
                     self.toast = None;
                     self.dispatch_cmd(cmd);
                 }
-                KeyCode::Tab => self.palette.accept_suggestion(),
+                KeyCode::Tab => self.palette.select_item(),
+                KeyCode::Up => {
+                    self.palette.move_up();
+                }
+                KeyCode::Down => {
+                    self.palette.move_down();
+                }
                 KeyCode::Backspace => self.palette.backspace(),
                 KeyCode::Char(c) => self.palette.push(c),
                 _ => {}
@@ -590,8 +609,14 @@ impl App {
             modal.render(f, main, self.theme);
         }
 
+        if self.palette.open {
+            palette::render_dropdown(f, main, self.theme, &self.palette);
+        }
+
         let hints: &str = if let Some(m) = self.modal.as_ref() {
             m.hints()
+        } else if self.palette.open {
+            "[↑↓/C-j/C-k] navigate  [tab] select  [enter] run  [esc] cancel"
         } else if self.views.last().is_some() {
             "[:] palette  [/] filter  [esc] back  [^Q] quit  [?] help"
         } else {
