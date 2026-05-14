@@ -167,8 +167,7 @@ impl DataTable {
                     .bg(theme.selection_bg)
                     .fg(theme.selection_fg)
                     .add_modifier(Modifier::BOLD),
-            )
-            .highlight_symbol("▶ ");
+            );
 
         f.render_stateful_widget(table, area, &mut self.state);
     }

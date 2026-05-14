@@ -136,8 +136,7 @@ impl DetailView {
                 Style::default()
                     .bg(theme.selection_bg)
                     .fg(theme.selection_fg),
-            )
-            .highlight_symbol("▶ ");
+            );
 
         f.render_stateful_widget(table, area, &mut self.state);
     }

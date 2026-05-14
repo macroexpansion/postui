@@ -89,14 +89,12 @@ impl Modal for ThemesModal {
         f.render_widget(block, rect);
 
         let items: Vec<ListItem> = theme::ALL.iter().map(|t| ListItem::new(t.name)).collect();
-        let list = List::new(items)
-            .highlight_style(
-                Style::default()
-                    .bg(theme.selection_bg)
-                    .fg(theme.selection_fg)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .highlight_symbol("▶ ");
+        let list = List::new(items).highlight_style(
+            Style::default()
+                .bg(theme.selection_bg)
+                .fg(theme.selection_fg)
+                .add_modifier(Modifier::BOLD),
+        );
         f.render_stateful_widget(list, inner, &mut self.state);
     }
 
